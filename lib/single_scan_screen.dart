@@ -7,6 +7,10 @@ import 'scanner_view.dart';
 import 'scanner_top_bar.dart';
 import 'scanner_overlay.dart';
 
+// ── Offset per mode ──────────────────────────────────────────────────
+const Offset _qrOffset = Offset(0.0, -50.0);
+const Offset _barcodeOffset = Offset(0.0, -80.0);
+
 /// Determines which scan mode the unified screen operates in.
 enum _ScanMode { custom, qrCode, barcode }
 
@@ -61,13 +65,12 @@ class SingleScanScreen extends StatefulWidget {
     this.detectionTimeoutMs = 250,
   }) : _mode = _ScanMode.qrCode,
        scanWindow = null,
-       allowedFormats = const <BarcodeFormat>[];
+       allowedFormats = const [BarcodeFormat.qrCode];
 
   /// Creates a scanner optimized for **1D product barcodes**.
   ///
-  /// [allowedFormats] lets the caller restrict which 1D symbologies are
-  /// accepted. When empty (the default), all common store-product formats are
-  /// allowed. Any format not in the built-in 1D list is silently filtered out.
+  /// [allowedFormats] defaults to the standard set of store-product 1D
+  /// symbologies. The caller may pass a subset to narrow detection further.
   const SingleScanScreen.barcode({
     super.key,
     this.overlayStyle,
@@ -75,7 +78,7 @@ class SingleScanScreen extends StatefulWidget {
     this.showCloseButton = true,
     this.showFlashButton = true,
     this.detectionTimeoutMs = 250,
-    this.allowedFormats = const <BarcodeFormat>[],
+    this.allowedFormats = const [],
   }) : _mode = _ScanMode.barcode,
        scanWindow = null;
 
@@ -89,11 +92,6 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
 
   bool _isPopping = false;
 
-  // ── Offset per mode ──────────────────────────────────────────────────
-  static const Offset _qrOffset = Offset(0.0, -50.0);
-  static const Offset _barcodeOffset = Offset(0.0, -80.0);
-
-  // ── 1-D barcode format whitelist ─────────────────────────────────────
   static const List<BarcodeFormat> _storeProductFormats = [
     BarcodeFormat.code128,
     BarcodeFormat.code39,
@@ -104,35 +102,17 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
     BarcodeFormat.upcE,
   ];
 
-  /// Returns the effective barcode formats for the controller.
-  ///
-  /// For QR mode this is always `[BarcodeFormat.qrCode]`.
-  /// For barcode mode the caller's [allowedFormats] are intersected with
-  /// [_storeProductFormats]; if the intersection is empty (or the caller
-  /// passed nothing) the full whitelist is used instead.
   List<BarcodeFormat> _getEffectiveFormats() {
-    if (widget._mode == _ScanMode.custom) {
-      return widget.allowedFormats;
+    if (widget._mode == _ScanMode.barcode) {
+      // If empty, use all default 1D formats
+      if (widget.allowedFormats.isEmpty) {
+        return _storeProductFormats;
+      }
+      // Intersection: Strip out any formats not in the 1D list
+      return widget.allowedFormats.where((f) => _storeProductFormats.contains(f)).toList();
     }
-    if (widget._mode == _ScanMode.qrCode) {
-      return const [BarcodeFormat.qrCode];
-    }
-
-    if (widget.allowedFormats.isEmpty) {
-      return _storeProductFormats;
-    }
-
-    final filtered = widget.allowedFormats.where((format) => _storeProductFormats.contains(format)).toList();
-
-    if (filtered.isEmpty) {
-      debugPrint(
-        'Scanner Package Warning: All provided formats were filtered out. '
-        'Defaulting to all 1D formats.',
-      );
-      return _storeProductFormats;
-    }
-
-    return filtered;
+    // For .custom and .qrCode, trust the widget's allowedFormats
+    return widget.allowedFormats;
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────
@@ -153,14 +133,14 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
   }
 
   void _subscribeToBarcodes() {
-    _subscription = controller.barcodes.listen((capture) async {
-      if (_isPopping || capture.barcodes.isEmpty) return;
+    _subscription = controller.barcodes.listen((barcode) async {
+      // Prevent race conditions from native camera sensor speed
+      if (_isPopping) return;
 
-      final barcode = capture.barcodes.first;
-      final rawValue = barcode.rawValue;
+      final rawValue = barcode.barcodes.firstOrNull?.rawValue;
 
       if (rawValue != null) {
-        _isPopping = true;
+        _isPopping = true; // Set flag immediately
 
         unawaited(HapticFeedback.heavyImpact());
 
