@@ -2,15 +2,14 @@
 
 import 'package:flutter/material.dart';
 
-import 'single_scan_barcode_screen.dart';
-import 'single_scan_qrcode_screen.dart';
+import 'single_scan_screen.dart';
 
 Future<String?> scanBarcodeWithCamera(BuildContext context) async {
   try {
     final String? scannedCode = await Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const SingleScanBarcodeScreen()));
+    ).push(MaterialPageRoute(builder: (_) => const SingleScanScreen.barcode()));
 
     if (scannedCode != null) {
       debugPrint('Successfully scanned: $scannedCode');
@@ -28,7 +27,7 @@ Future<String?> scanQrCodeWithCamera(BuildContext context) async {
     final String? scannedCode = await Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const SingleScanQrCodeScreen()));
+    ).push(MaterialPageRoute(builder: (_) => const SingleScanScreen.qrCode()));
 
     if (scannedCode != null) {
       debugPrint('Successfully scanned: $scannedCode');
