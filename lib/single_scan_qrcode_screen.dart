@@ -1,25 +1,27 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart' show BarcodeFormat, MobileScannerController, BarcodeCapture, CameraFacing, DetectionSpeed;
 
-import 'functions.dart';
-import 'scanner_overlay.dart';
+import 'scanner_view.dart';
 import 'scanner_top_bar.dart';
-import 'scanner_error_widget.dart';
+import 'scanner_overlay.dart';
 
-const double _scanWindowUpdateThreshold = 0.0;
 const Offset _offsetFromCenter = Offset(0.0, -50.0);
 
 class SingleScanQrCodeScreen extends StatefulWidget {
   final bool showFlashButton;
+  final bool showCloseButton;
   final int detectionTimeoutMs;
+  final ScannerOverlayStyle? overlayStyle;
   final void Function(Object error)? onFlashButtonError;
   const SingleScanQrCodeScreen({
     super.key,
+    this.overlayStyle,
+    this.onFlashButtonError,
+    this.showCloseButton = true,
     this.showFlashButton = true,
     this.detectionTimeoutMs = 250,
-    this.onFlashButtonError,
   });
 
   @override
@@ -98,29 +100,20 @@ class _SingleScanQrCodeScreenState extends State<SingleScanQrCodeScreen> with Wi
 
   @override
   Widget build(BuildContext context) {
-    final scanWindow = calculateQrCodeScanWindow(context, offsetFromCenter: _offsetFromCenter);
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          MobileScanner(
-            fit: BoxFit.cover,
-            scanWindow: scanWindow,
-            scanWindowUpdateThreshold: _scanWindowUpdateThreshold,
-            controller: controller,
-            errorBuilder: (_, error) => ScannerErrorWidget(error: error),
-            overlayBuilder: (_, constraints) => ScannerOverlay(
-              constraints: constraints,
-              scanWindow: scanWindow,
-            ),
-          ),
-          ScannerTopBar(
-            controller: controller,
-            showFlashButton: widget.showFlashButton,
-            onFlashButtonError: widget.onFlashButtonError,
-          ),
-        ],
-      ),
+    return ScannerView.qrCode(
+      fit: BoxFit.cover,
+      controller: controller,
+      useAppLifecycleState: false,
+      overlayStyle: widget.overlayStyle,
+      offsetFromCenter: _offsetFromCenter,
+      stackChildren: [
+        ScannerTopBar(
+          controller: controller,
+          showFlashButton: widget.showFlashButton,
+          showCloseButton: widget.showCloseButton,
+          onFlashButtonError: widget.onFlashButtonError,
+        ),
+      ],
     );
   }
 }

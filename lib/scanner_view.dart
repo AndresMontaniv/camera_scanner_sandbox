@@ -16,7 +16,7 @@ import 'scanner_overlay.dart';
 /// * [ScannerView.new] — fully custom, unopinionated scanner layout.
 /// * [ScannerView.qrCode] — responsive 1:1 square scan window for 2D
 ///   matrix codes.
-/// * [ScannerView.barCode] — responsive horizontal scan window for 1D
+/// * [ScannerView.barcode] — responsive horizontal scan window for 1D
 ///   barcodes.
 class ScannerView extends StatelessWidget {
   /// The [BoxFit] strategy used by the camera preview.
@@ -39,7 +39,7 @@ class ScannerView extends StatelessWidget {
   /// A manually specified scan window rectangle in logical pixels.
   ///
   /// ⚠️ BEST PRACTICE: Use the [ScannerView.qrCode] or
-  /// [ScannerView.barCode] constructors instead of hardcoding this value
+  /// [ScannerView.barcode] constructors instead of hardcoding this value
   /// for truly responsive layouts.
   final Rect? scanWindow;
 
@@ -47,7 +47,7 @@ class ScannerView extends StatelessWidget {
   /// computed [scanWindow].
   ///
   /// Defaults to `true` in the [ScannerView.qrCode] and
-  /// [ScannerView.barCode] constructors to mimic `mobile_scanner`
+  /// [ScannerView.barcode] constructors to mimic `mobile_scanner`
   /// behavior, and to `false` in the default constructor.
   final bool autoDrawOverlay;
 
@@ -166,7 +166,7 @@ class ScannerView extends StatelessWidget {
   /// clamped to sane min/max bounds while maintaining a fixed, narrow height
   /// that encourages the user to align the barcode horizontally. An overlay is
   /// drawn by default.
-  const ScannerView.barCode({
+  const ScannerView.barcode({
     super.key,
     this.onDetect,
     this.controller,

@@ -1,26 +1,28 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:mobile_scanner/mobile_scanner.dart' show BarcodeFormat, MobileScannerController, BarcodeCapture, CameraFacing, DetectionSpeed;
 
-import 'functions.dart';
-import 'scanner_overlay.dart';
+import 'scanner_view.dart';
 import 'scanner_top_bar.dart';
-import 'scanner_error_widget.dart';
+import 'scanner_overlay.dart';
 
-const double _scanWindowUpdateThreshold = 0.0;
 const Offset _offsetFromCenter = Offset(0.0, -80.0);
 
 class SingleScanBarcodeScreen extends StatefulWidget {
   final bool showFlashButton;
+  final bool showCloseButton;
   final int detectionTimeoutMs;
   final List<BarcodeFormat> allowedFormats;
   final void Function(Object error)? onFlashButtonError;
+  final ScannerOverlayStyle? overlayStyle;
   const SingleScanBarcodeScreen({
     super.key,
+    this.overlayStyle,
     this.onFlashButtonError,
-    this.detectionTimeoutMs = 250,
+    this.showCloseButton = true,
     this.showFlashButton = true,
+    this.detectionTimeoutMs = 250,
     this.allowedFormats = const <BarcodeFormat>[],
   });
 
@@ -125,29 +127,20 @@ class _SingleScanBarcodeScreenState extends State<SingleScanBarcodeScreen> with 
 
   @override
   Widget build(BuildContext context) {
-    final scanWindow = calculateBarcodeScanWindow(context, offsetFromCenter: _offsetFromCenter);
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          MobileScanner(
-            fit: BoxFit.cover,
-            scanWindow: scanWindow,
-            scanWindowUpdateThreshold: _scanWindowUpdateThreshold,
-            controller: controller,
-            errorBuilder: (_, error) => ScannerErrorWidget(error: error),
-            overlayBuilder: (_, constraints) => ScannerOverlay(
-              constraints: constraints,
-              scanWindow: scanWindow,
-            ),
-          ),
-          ScannerTopBar(
-            controller: controller,
-            showFlashButton: widget.showFlashButton,
-            onFlashButtonError: widget.onFlashButtonError,
-          ),
-        ],
-      ),
+    return ScannerView.barcode(
+      fit: BoxFit.cover,
+      controller: controller,
+      useAppLifecycleState: false,
+      overlayStyle: widget.overlayStyle,
+      offsetFromCenter: _offsetFromCenter,
+      stackChildren: [
+        ScannerTopBar(
+          controller: controller,
+          showFlashButton: widget.showFlashButton,
+          showCloseButton: widget.showCloseButton,
+          onFlashButtonError: widget.onFlashButtonError,
+        ),
+      ],
     );
   }
 }

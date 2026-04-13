@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'functions.dart';
-import 'barcode_scanner_screen.dart';
 
 void main() {
   runApp(const MainApp());
@@ -20,11 +19,11 @@ class MainApp extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 40.0),
             children: [
               ListTile(
-                title: const Text('Simple QR Scanner'),
-                subtitle: const Text('Fixed Square Overlay to point to the QR Code'),
+                title: const Text('Single Scan QR Code'),
+                subtitle: const Text('Scans only one QR code and closes the screen'),
                 onTap: () async {
                   final String? scanned = await scanQrCodeWithCamera(context);
-                  print('scanned: $scanned');
+                  debugPrint('scanned: $scanned');
 
                   // Developers can use the pre build method that calls the scanner
                   // Or they can write the onTap by themself like so:
@@ -40,36 +39,22 @@ class MainApp extends StatelessWidget {
               ),
               const Divider(),
               ListTile(
-                title: const Text('Barcode Scanner Screen'),
-                subtitle: const Text('Ultimate version of the UPC barcode scanner'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => BarcodeScannerScreen(
-                        showFlashButton: true,
-                        showQtyControls: true,
-                        onCameraScan: (barcode, qty) {
-                          print('Simple Barcode: $barcode  | qty: $qty');
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
                 title: const Text('Single Barcode Scanner '),
                 subtitle: const Text('Scans only one barcode and closes the screen'),
                 onTap: () async {
                   final String? scanned = await scanBarcodeWithCamera(context);
-                  print('scanned: $scanned');
+                  debugPrint('scanned: $scanned');
 
                   // Developers can use the pre build method that calls the scanner
                   // Or they can write the onTap by themself like so:
                   // final String? scannedCode = await Navigator.push(
                   //   context,
-                  //   MaterialPageRoute(builder: (_) => const SingleScanBarcodeScreen()),
+                  //   MaterialPageRoute(
+                  //     builder: (_) => const SingleScanBarcodeScreen(
+                  //       allowedFormats: [BarcodeFormat.ean13],
+                  //       overlayStyle: ScannerOverlayStyle(borderColor: Colors.green),
+                  //     ),
+                  //   ),
                   // );
 
                   // if (scannedCode != null) {
