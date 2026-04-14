@@ -134,22 +134,21 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
 
   void _subscribeToBarcodes() {
     _subscription = controller.barcodes.listen((barcode) async {
-      // Prevent race conditions from native camera sensor speed
       if (_isPopping) return;
 
       final rawValue = barcode.barcodes.firstOrNull?.rawValue;
 
       if (rawValue != null) {
-        _isPopping = true; // Set flag immediately
-
+        _isPopping = true;
         unawaited(HapticFeedback.heavyImpact());
+
+        if (!mounted) return;
+        final navigator = Navigator.of(context);
 
         await _subscription?.cancel();
         await controller.stop();
 
-        if (mounted) {
-          Navigator.of(context).pop(rawValue);
-        }
+        navigator.pop(rawValue);
       }
     });
   }
@@ -194,9 +193,11 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
           ]
         : [];
 
+    ScannerView scannerWidget;
+
     switch (widget._mode) {
       case _ScanMode.custom:
-        return ScannerView(
+        scannerWidget = ScannerView(
           fit: BoxFit.cover,
           controller: controller,
           autoDrawOverlay: true,
@@ -205,8 +206,9 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
           overlayStyle: widget.overlayStyle,
           stackChildren: stackChildren,
         );
+        break;
       case _ScanMode.qrCode:
-        return ScannerView.qrCode(
+        scannerWidget = ScannerView.qrCode(
           fit: BoxFit.cover,
           controller: controller,
           useAppLifecycleState: false,
@@ -214,8 +216,9 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
           offsetFromCenter: _qrOffset,
           stackChildren: stackChildren,
         );
+        break;
       case _ScanMode.barcode:
-        return ScannerView.barcode(
+        scannerWidget = ScannerView.barcode(
           fit: BoxFit.cover,
           controller: controller,
           useAppLifecycleState: false,
@@ -223,6 +226,15 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
           offsetFromCenter: _barcodeOffset,
           stackChildren: stackChildren,
         );
+        break;
     }
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        _isPopping = true;
+        controller.stop();
+      },
+      child: scannerWidget,
+    );
   }
 }
