@@ -19,6 +19,7 @@ class MultiScanBarcodeScreen extends StatefulWidget {
   final String? closeButtonText;
   final ButtonStyle? closeButtonStyle;
   final ScannerOverlayStyle? overlayStyle;
+  final List<BarcodeFormat> allowedFormats;
   final void Function(String barcode, int qty)? onCameraScan;
   final Widget Function(BuildContext, int, Widget?)? closeButtonBuilder;
 
@@ -31,13 +32,24 @@ class MultiScanBarcodeScreen extends StatefulWidget {
     this.closeButtonBuilder,
     this.showQtyControls = true,
     this.showFlashButton = false,
-    this.sameItemCooldownMs = 1500,
     this.detectionTimeoutMs = 250,
+    this.sameItemCooldownMs = 1500,
+    this.allowedFormats = const <BarcodeFormat>[],
   });
 
   @override
   State<MultiScanBarcodeScreen> createState() => _MultiScanBarcodeScreenState();
 }
+
+const List<BarcodeFormat> _storeProductFormats = [
+  BarcodeFormat.code128,
+  BarcodeFormat.code39,
+  BarcodeFormat.code93,
+  BarcodeFormat.ean13,
+  BarcodeFormat.ean8,
+  BarcodeFormat.upcA,
+  BarcodeFormat.upcE,
+];
 
 class _MultiScanBarcodeScreenState extends State<MultiScanBarcodeScreen> with WidgetsBindingObserver {
   late MobileScannerController controller;
@@ -49,21 +61,23 @@ class _MultiScanBarcodeScreenState extends State<MultiScanBarcodeScreen> with Wi
   String? _lastScannedCode;
   DateTime? _lastScanTime;
 
+  List<BarcodeFormat> _getEffectiveFormats() {
+    if (widget.allowedFormats.isEmpty) {
+      return _storeProductFormats;
+    }
+    return widget.allowedFormats.where((f) => _storeProductFormats.contains(f)).toList();
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
     controller = MobileScannerController(
-      detectionTimeoutMs: widget.detectionTimeoutMs,
-      detectionSpeed: DetectionSpeed.normal,
       torchEnabled: false,
-      formats: [
-        BarcodeFormat.ean13,
-        BarcodeFormat.ean8,
-        BarcodeFormat.upcA,
-        BarcodeFormat.upcE,
-      ],
+      facing: CameraFacing.back,
+      detectionSpeed: DetectionSpeed.normal,
+      detectionTimeoutMs: widget.detectionTimeoutMs,
+      formats: _getEffectiveFormats(),
     );
     _subscribeToBarcodes();
   }
@@ -120,11 +134,11 @@ class _MultiScanBarcodeScreenState extends State<MultiScanBarcodeScreen> with Wi
 
   @override
   void dispose() {
+    qtyNotifier.dispose();
+    totalItemsNotifier.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _subscription?.cancel();
     controller.dispose();
-    qtyNotifier.dispose();
-    totalItemsNotifier.dispose();
     super.dispose();
   }
 

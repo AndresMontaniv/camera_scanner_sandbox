@@ -86,21 +86,21 @@ class SingleScanScreen extends StatefulWidget {
   State<SingleScanScreen> createState() => _SingleScanScreenState();
 }
 
+const List<BarcodeFormat> _storeProductFormats = [
+  BarcodeFormat.code128,
+  BarcodeFormat.code39,
+  BarcodeFormat.code93,
+  BarcodeFormat.ean13,
+  BarcodeFormat.ean8,
+  BarcodeFormat.upcA,
+  BarcodeFormat.upcE,
+];
+
 class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBindingObserver {
   late final MobileScannerController controller;
   StreamSubscription<BarcodeCapture>? _subscription;
 
   bool _isPopping = false;
-
-  static const List<BarcodeFormat> _storeProductFormats = [
-    BarcodeFormat.code128,
-    BarcodeFormat.code39,
-    BarcodeFormat.code93,
-    BarcodeFormat.ean13,
-    BarcodeFormat.ean8,
-    BarcodeFormat.upcA,
-    BarcodeFormat.upcE,
-  ];
 
   List<BarcodeFormat> _getEffectiveFormats() {
     if (widget._mode == _ScanMode.barcode) {
