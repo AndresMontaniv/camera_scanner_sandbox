@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'multi_scan_barcode_screen.dart';
 import 'functions.dart';
 
 void main() {
@@ -37,6 +38,7 @@ class MainApp extends StatelessWidget {
                   // }
                 },
               ),
+
               const Divider(),
               ListTile(
                 title: const Text('Single Barcode Scanner '),
@@ -60,6 +62,26 @@ class MainApp extends StatelessWidget {
                   // if (scannedCode != null) {
                   //   debugPrint('Successfully scanned: $scannedCode');
                   // }
+                },
+              ),
+
+              const Divider(),
+              ListTile(
+                title: const Text('MultiScan Barcode Scanner Screen'),
+                subtitle: const Text('POS like scanner for 1D barcodes'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => MultiScanBarcodeScreen(
+                        showFlashButton: true,
+                        showQtyControls: true,
+                        onCameraScan: (barcode, qty) {
+                          print('Multi Scan: $barcode  | qty: $qty');
+                        },
+                      ),
+                    ),
+                  );
                 },
               ),
             ],
