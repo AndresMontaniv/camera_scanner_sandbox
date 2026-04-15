@@ -26,7 +26,7 @@ class SingleScanScreen extends StatefulWidget {
   final bool showFlashButton;
   final bool showCloseButton;
   final Rect? scanWindow;
-  final int detectionTimeoutMs;
+  final Offset? offsetFromCenter;
   final List<BarcodeFormat> allowedFormats;
   final ScannerOverlayStyle? overlayStyle;
   final void Function(Object error)? onFlashButtonError;
@@ -49,9 +49,9 @@ class SingleScanScreen extends StatefulWidget {
     this.onFlashButtonError,
     this.showCloseButton = true,
     this.showFlashButton = true,
-    this.detectionTimeoutMs = 250,
     this.allowedFormats = const <BarcodeFormat>[],
-  }) : _mode = _ScanMode.custom;
+  }) : _mode = _ScanMode.custom,
+       offsetFromCenter = null;
 
   /// Creates a scanner optimized for **QR / 2D matrix codes**.
   ///
@@ -59,10 +59,10 @@ class SingleScanScreen extends StatefulWidget {
   const SingleScanScreen.qrCode({
     super.key,
     this.overlayStyle,
+    this.offsetFromCenter,
     this.onFlashButtonError,
     this.showCloseButton = true,
     this.showFlashButton = true,
-    this.detectionTimeoutMs = 250,
   }) : _mode = _ScanMode.qrCode,
        scanWindow = null,
        allowedFormats = const [BarcodeFormat.qrCode];
@@ -74,10 +74,10 @@ class SingleScanScreen extends StatefulWidget {
   const SingleScanScreen.barcode({
     super.key,
     this.overlayStyle,
+    this.offsetFromCenter,
     this.onFlashButtonError,
     this.showCloseButton = true,
     this.showFlashButton = true,
-    this.detectionTimeoutMs = 250,
     this.allowedFormats = const [],
   }) : _mode = _ScanMode.barcode,
        scanWindow = null;
@@ -126,7 +126,6 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
       torchEnabled: false,
       facing: CameraFacing.back,
       detectionSpeed: DetectionSpeed.normal,
-      detectionTimeoutMs: widget.detectionTimeoutMs,
       formats: _getEffectiveFormats(),
     );
     _subscribeToBarcodes();
@@ -213,7 +212,7 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
           controller: controller,
           useAppLifecycleState: false,
           overlayStyle: widget.overlayStyle,
-          offsetFromCenter: _qrOffset,
+          offsetFromCenter: widget.offsetFromCenter ?? _qrOffset,
           stackChildren: stackChildren,
         );
         break;
@@ -223,7 +222,7 @@ class _SingleScanScreenState extends State<SingleScanScreen> with WidgetsBinding
           controller: controller,
           useAppLifecycleState: false,
           overlayStyle: widget.overlayStyle,
-          offsetFromCenter: _barcodeOffset,
+          offsetFromCenter: widget.offsetFromCenter ?? _barcodeOffset,
           stackChildren: stackChildren,
         );
         break;

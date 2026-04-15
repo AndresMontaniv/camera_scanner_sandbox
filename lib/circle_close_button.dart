@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class CircleCloseButton extends StatelessWidget {
-  const CircleCloseButton({super.key});
+  final void Function()? pop;
+  const CircleCloseButton({super.key, this.pop});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +15,11 @@ class CircleCloseButton extends StatelessWidget {
         icon: const Icon(Icons.close, color: Colors.white, size: 28),
         onPressed: () {
           if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
+            if (pop != null) {
+              pop?.call();
+            } else {
+              Navigator.of(context).pop();
+            }
           } else {
             debugPrint('CircleCloseButton: No routes to pop');
           }

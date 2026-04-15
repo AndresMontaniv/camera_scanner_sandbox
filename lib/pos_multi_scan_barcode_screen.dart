@@ -58,6 +58,8 @@ class _MultiScanBarcodeScreenState extends State<MultiScanBarcodeScreen> with Wi
   final ValueNotifier<int> qtyNotifier = ValueNotifier<int>(1);
   final ValueNotifier<int> totalItemsNotifier = ValueNotifier<int>(0);
 
+  final Map<String, int> _cart = {};
+
   String? _lastScannedCode;
   DateTime? _lastScanTime;
 
@@ -122,14 +124,25 @@ class _MultiScanBarcodeScreenState extends State<MultiScanBarcodeScreen> with Wi
     });
   }
 
-  void _addScannedItem(String barcode) {
-    widget.onCameraScan?.call(barcode, qtyNotifier.value);
-    totalItemsNotifier.value += qtyNotifier.value;
+  void _addScannedItem(String rawValue) {
+    final currentQty = qtyNotifier.value;
+
+    // 1. Add or update the cart
+    _cart[rawValue] = (_cart[rawValue] ?? 0) + currentQty;
+
+    // 2. Reset the UI multiplier back to 1 for the next scan
     qtyNotifier.value = 1;
+
+    // 3. Update the total items badge mathematically
+    totalItemsNotifier.value = _cart.values.fold(0, (sum, qty) => sum + qty);
+
+    // 4. Fire the real-time stream callback if the developer provided it
+    widget.onCameraScan?.call(rawValue, currentQty);
   }
 
   void _popBack() {
-    Navigator.pop(context);
+    // Return the batch cart data to the parent screen
+    Navigator.of(context).pop(_cart);
   }
 
   @override
