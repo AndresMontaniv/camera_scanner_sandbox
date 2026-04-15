@@ -45,3 +45,4 @@ app.*.map.json
 /android/app/release
 
 md_notebook.md
+notes.md

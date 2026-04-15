@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' show BarcodeFormat, MobileScannerController, BarcodeCapture, CameraFacing, DetectionSpeed;
 
-import 'circle_close_button.dart';
-import 'scanner_top_bar.dart';
 import 'scanner_view.dart';
 import 'scanner_overlay.dart';
+import 'scanner_top_bar.dart';
 import 'flash_toggle_button.dart';
+import 'circle_close_button.dart';
 
 const Offset _barcodeOffset = Offset(0.0, -80.0);
 
@@ -213,29 +213,58 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
 
   @override
   Widget build(BuildContext context) {
-    if (widget._mode == _ScanMode.callbackStream) {
-      return _buildScannerView();
-    }
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: _onPopInvokedWithResult,
-      child: _buildScannerView(),
-    );
-  }
-
-  ScannerView _buildScannerView() {
-    return ScannerView.barcode(
+    final scannerView = ScannerView.barcode(
       fit: BoxFit.cover,
       controller: controller,
       useAppLifecycleState: false,
       overlayStyle: widget.overlayStyle,
       offsetFromCenter: widget.offsetFromCenter ?? _barcodeOffset,
       stackChildren: [
-        if (!widget.hideToolBar) _scannerToolBar(),
+        if (!widget.hideToolBar)
+          _DefaultToolBar(
+            controller: controller,
+            scannedItemsNotifier: scannedItemsNotifier,
+            showCloseButton: widget.showCloseButton,
+            showFlashButton: widget.showFlashButton,
+            showScannedListButton: widget.showScannedListButton,
+            popBackWithListResult: _popBackWithListResult,
+            showScannedListBuilder: widget.showScannedListBuilder,
+            onShowScannedListPressed: widget.onShowScannedListPressed,
+          ),
         ...?widget.stackChildren,
       ],
     );
+    if (widget._mode == _ScanMode.callbackStream) {
+      return scannerView;
+    }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: _onPopInvokedWithResult,
+      child: scannerView,
+    );
   }
+}
+
+class _DefaultToolBar extends StatelessWidget {
+  final bool showCloseButton;
+  final bool showFlashButton;
+  final bool showScannedListButton;
+  final MobileScannerController? controller;
+  final ValueNotifier<List<String>> scannedItemsNotifier;
+  final void Function()? popBackWithListResult;
+  final void Function(BuildContext, List<String>)? onShowScannedListPressed;
+  final Widget Function(BuildContext, List<String>)? showScannedListBuilder;
+
+  const _DefaultToolBar({
+    required this.controller,
+    required this.scannedItemsNotifier,
+    required this.showCloseButton,
+    required this.showFlashButton,
+    required this.showScannedListButton,
+    required this.popBackWithListResult,
+    required this.showScannedListBuilder,
+    required this.onShowScannedListPressed,
+  });
 
   void _onShowScanListPressed(BuildContext ctx, List<String> list) {
     // TODO later: Open a Modal or temp screen to show the scanned items
@@ -243,21 +272,22 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
     debugPrint('Scanned items: $list');
   }
 
-  ScannerTopBar _scannerToolBar() {
+  @override
+  Widget build(BuildContext context) {
     return ScannerTopBar.custom(
-      leading: widget.showCloseButton ? CircleCloseButton(pop: _popBackWithListResult) : null,
+      leading: showCloseButton ? CircleCloseButton(pop: popBackWithListResult) : null,
       trailing: [
         Visibility(
-          visible: widget.showFlashButton,
+          visible: showFlashButton,
           child: FlashToggleButton(controller: controller),
         ),
         Visibility(
-          visible: widget.showScannedListButton,
+          visible: showScannedListButton,
           child: ValueListenableBuilder<List<String>>(
             valueListenable: scannedItemsNotifier,
             builder: (ctx, scannedItems, _) {
-              if (widget.showScannedListBuilder != null) {
-                return widget.showScannedListBuilder!.call(ctx, scannedItems);
+              if (showScannedListBuilder != null) {
+                return showScannedListBuilder!.call(ctx, scannedItems);
               }
               final total = scannedItems.length;
               return Badge(
@@ -271,7 +301,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    onPressed: () => _onShowScanListPressed(ctx, scannedItems),
+                    onPressed: () => onShowScannedListPressed != null
+                        ? onShowScannedListPressed!.call(ctx, scannedItems)
+                        : _onShowScanListPressed(ctx, scannedItems),
                     icon: const Icon(Icons.list, color: Colors.white, size: 28),
                   ),
                 ),
