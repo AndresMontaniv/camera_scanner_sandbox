@@ -2,8 +2,7 @@
 
 import 'package:flutter/material.dart';
 
-import 'barcode_scanner_screen.dart';
-import 'single_scan_screen.dart';
+import 'dx_scanner_screen.dart';
 
 // Single Scan Methods
 
@@ -12,7 +11,7 @@ Future<String?> scanBarcodeWithCamera(BuildContext context) async {
     final String? scannedCode = await Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const SingleScanScreen.barcode()));
+    ).push(MaterialPageRoute(builder: (_) => const DxScannerScreen.singleScanBarcode()));
 
     if (scannedCode != null) {
       debugPrint('Successfully scanned: $scannedCode');
@@ -30,7 +29,7 @@ Future<String?> scanQrCodeWithCamera(BuildContext context) async {
     final String? scannedCode = await Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const SingleScanScreen.qrCode()));
+    ).push(MaterialPageRoute(builder: (_) => const DxScannerScreen.singleScanQrCode()));
 
     if (scannedCode != null) {
       debugPrint('Successfully scanned: $scannedCode');
@@ -50,7 +49,7 @@ Future<List<String>?> multiScanBarcode(BuildContext context) async {
     final List<String>? scannedItems = await Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const BarcodeScannerScreen.multiScanBatchPop()));
+    ).push(MaterialPageRoute(builder: (_) => const DxScannerScreen.batchPopBarcode()));
 
     if (scannedItems != null) {
       debugPrint('Successfully scanned: $scannedItems');
@@ -68,7 +67,7 @@ Future<String?> scanBarcodeSingleScan(BuildContext context) async {
     final String? scannedCode = await Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const BarcodeScannerScreen.singleScan()));
+    ).push(MaterialPageRoute(builder: (_) => const DxScannerScreen.singleScanBarcode()));
 
     if (scannedCode != null) {
       debugPrint('Successfully scanned: $scannedCode');
