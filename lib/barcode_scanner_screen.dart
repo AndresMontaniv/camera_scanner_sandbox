@@ -13,6 +13,13 @@ const Offset _barcodeOffset = Offset(0.0, -80.0);
 
 enum _ScanMode { single, batchPop, callbackStream }
 
+/// A highly optimized 1D barcode scanner that supports three routing modes:
+/// 1. [singleScan]: Scans a single barcode, safely shuts down the camera, and pops returning a `String?`.
+/// 2. [multiScanBatchPop]: Allows continuous scanning into an internal cart, popping returning a `List<String>`.
+/// 3. [multiScanCallbackStream]: Continuously scans and fires the [onCameraScan] callback for each valid frame.
+///
+/// This widget implements an `_isPopping` hardware safety tripwire to guarantee
+/// the camera sensor is completely locked down and detached before the screen animates away.
 class BarcodeScannerScreen extends StatefulWidget {
   final bool showFlashButton;
   final bool showCloseButton;
@@ -32,6 +39,10 @@ class BarcodeScannerScreen extends StatefulWidget {
   /// Internal flag set by the named constructors.
   final _ScanMode _mode;
 
+  /// Opens the scanner to read exactly one barcode.
+  ///
+  /// The hardware will instantly lock upon the first successful read,
+  /// await safe sensor shutdown, and pop the navigation stack returning a [String?].
   const BarcodeScannerScreen.singleScan({
     super.key,
     this.overlayStyle,
@@ -45,12 +56,17 @@ class BarcodeScannerScreen extends StatefulWidget {
   }) : _mode = _ScanMode.single,
        onCameraScan = null,
        showScannedListBuilder = null,
+       // Defaults for single scan where cooldown/duplicates don't apply
        allowDuplicates = false,
        sameItemCooldownMs = 0,
        detectionTimeoutMs = 250,
        hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton),
        showScannedListButton = false;
 
+  /// Opens the scanner for continuous scanning, storing results in an internal cart.
+  ///
+  /// When the user taps the Close or Back button, the scanner shuts down
+  /// and pops the navigation stack returning a [List<String>] of all scanned items.
   const BarcodeScannerScreen.multiScanBatchPop({
     super.key,
     this.overlayStyle,
@@ -70,9 +86,13 @@ class BarcodeScannerScreen extends StatefulWidget {
        hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton && !showScannedListButton),
        onCameraScan = null;
 
+  /// Opens the scanner for continuous scanning, firing a callback for every valid scan.
+  ///
+  /// This mode does not return data on pop. Instead, it relies on [onCameraScan]
+  /// to pass data to the parent widget in real-time.
   const BarcodeScannerScreen.multiScanCallbackStream({
     super.key,
-    this.onCameraScan,
+    required void Function(String) onDetect,
     this.overlayStyle,
     this.stackChildren,
     this.offsetFromCenter,
@@ -87,6 +107,7 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.allowDuplicates = true,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.callbackStream,
+       onCameraScan = onDetect,
        hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton && !showScannedListButton);
 
   @override
@@ -182,41 +203,45 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
   Future<void> _addScannedItem(String rawValue) async {
     switch (widget._mode) {
       case _ScanMode.single:
-        // Lock hardware to prevent ghost scans during the exit animation
+        // TRIPWIRE: Instantly lock hardware to prevent ghost scans from slipping in
+        // during the async await gap or the exit animation.
         _isPopping = true;
         if (!mounted) return;
+
+        // Cache the navigator BEFORE the async gap to avoid deactivated widget context crashes.
         final navigator = Navigator.of(context);
         await _subscription?.cancel();
-        await controller.stop();
+        await controller.stop(); // Wait for physical hardware to release
+
         navigator.pop(rawValue);
         break;
 
       case _ScanMode.batchPop:
-        // If allowDuplicates is false, reject items already in the list
+        // Check duplicate rules before updating the single source of truth.
         if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) return;
-        // Otherwise, add to the list
         scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
         break;
 
       case _ScanMode.callbackStream:
-        // If allowDuplicates is false, reject items already in the list
+        // Respect duplicate rules for the stream.
         if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) return;
-
-        // Otherwise, store it and fire the callback
         scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
-        widget.onCameraScan?.call(rawValue);
 
+        // Fire the real-time stream
+        widget.onCameraScan?.call(rawValue);
         break;
     }
   }
 
   Future<void> _popBackWithListResult() async {
+    // Prevent double-tapping the close button
     if (_isPopping) return;
     _isPopping = true;
 
     if (!mounted) return;
     final navigator = Navigator.of(context);
 
+    // Safely await hardware spin-down to prevent camera lock crashes on the next screen
     await _subscription?.cancel();
     await controller.stop();
 
@@ -226,10 +251,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
   Future<void> _onPopInvokedWithResult(bool didPop, Object? result) async {
     print('OnPopInvokedWithResult : $didPop and result:\n$result');
 
-    // If a programmatic pop already happened, we don't need to do anything.
+    // If didPop is true, a programmatic pop just succeeded. We do nothing.
     if (didPop) return;
 
-    // The tripwire
+    // The user triggered a system back swipe. Intercept it and lock the hardware.
     if (_isPopping) return;
     _isPopping = true;
 
@@ -239,7 +264,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
     await _subscription?.cancel();
     await controller.stop();
 
-    // Now that the hardware is safely dead, route the data!
+    // Now that the hardware is safely dead, route the data manually.
     if (widget._mode == _ScanMode.single) {
       navigator.pop();
     } else {

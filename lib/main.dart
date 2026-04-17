@@ -77,7 +77,7 @@ class MainApp extends StatelessWidget {
                         showFlashButton: true,
                         showCloseButton: true,
                         showScannedListButton: true,
-                        onCameraScan: (barcode) {
+                        onDetect: (barcode) {
                           print('Stream Multi Scan: $barcode');
                         },
                       ),
