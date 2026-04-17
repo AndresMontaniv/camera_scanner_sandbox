@@ -68,7 +68,7 @@ Future<String?> scanBarcodeSingleScan(BuildContext context) async {
     final String? scannedCode = await Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const SingleScanScreen.barcode()));
+    ).push(MaterialPageRoute(builder: (_) => const BarcodeScannerScreen.singleScan()));
 
     if (scannedCode != null) {
       debugPrint('Successfully scanned: $scannedCode');

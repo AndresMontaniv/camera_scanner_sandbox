@@ -336,10 +336,87 @@ class _DefaultToolBar extends StatelessWidget {
     required this.onShowScannedListPressed,
   });
 
-  void _onShowScanListPressed(BuildContext ctx, List<String> list) {
-    // TODO later: Open a Modal or temp screen to show the scanned items
-    // For now just debugPrinting it to make a point
-    debugPrint('Scanned items: $list');
+  void _onShowScanListPressed(BuildContext context, List<String> scannedItems) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Scanned Items (${scannedItems.length})',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.black54),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+
+                // Empty State (Just in case)
+                if (scannedItems.isEmpty)
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        'No items scanned yet.',
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                      ),
+                    ),
+                  )
+                // Scrollable List
+                else
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: scannedItems.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.blue.shade100,
+                            foregroundColor: Colors.blue.shade900,
+                            child: Text('${index + 1}'),
+                          ),
+                          title: Text(
+                            scannedItems[index],
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
