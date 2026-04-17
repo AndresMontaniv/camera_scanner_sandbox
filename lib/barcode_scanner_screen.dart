@@ -40,7 +40,7 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.onShowScannedListPressed,
     this.showFlashButton = true,
     this.showCloseButton = true,
-    this.hideToolBar = false,
+    bool hideToolBar = false,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.single,
        onCameraScan = null,
@@ -48,6 +48,7 @@ class BarcodeScannerScreen extends StatefulWidget {
        allowDuplicates = false,
        sameItemCooldownMs = 0,
        detectionTimeoutMs = 250,
+       hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton),
        showScannedListButton = false;
 
   const BarcodeScannerScreen.multiScanBatchPop({
@@ -57,7 +58,7 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.offsetFromCenter,
     this.showScannedListBuilder,
     this.onShowScannedListPressed,
-    this.hideToolBar = false,
+    bool hideToolBar = false,
     this.showFlashButton = true,
     this.showCloseButton = true,
     this.allowDuplicates = true,
@@ -66,6 +67,7 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.sameItemCooldownMs = 1500,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.batchPop,
+       hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton && !showScannedListButton),
        onCameraScan = null;
 
   const BarcodeScannerScreen.multiScanCallbackStream({
@@ -76,15 +78,16 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.offsetFromCenter,
     this.showScannedListBuilder,
     this.onShowScannedListPressed,
-    this.hideToolBar = false,
     this.showFlashButton = true,
     this.showCloseButton = true,
-    this.allowDuplicates = true,
     this.showScannedListButton = true,
     this.detectionTimeoutMs = 250,
     this.sameItemCooldownMs = 1500,
+    bool hideToolBar = false,
+    this.allowDuplicates = true,
     this.allowedFormats = const <BarcodeFormat>[],
-  }) : _mode = _ScanMode.callbackStream;
+  }) : _mode = _ScanMode.callbackStream,
+       hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton && !showScannedListButton);
 
   @override
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
@@ -108,6 +111,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
 
   String? _lastScannedCode;
   DateTime? _lastScanTime;
+
+  bool _isPopping = false;
 
   List<BarcodeFormat> _getEffectiveFormats() {
     if (widget.allowedFormats.isEmpty) {
@@ -151,42 +156,95 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
 
   void _subscribeToBarcodes() {
     _subscription = controller.barcodes.listen((capture) {
+      if (_isPopping) return;
+
       if (capture.barcodes.isEmpty) return;
 
       final rawValue = capture.barcodes.first.rawValue;
       if (rawValue == null) return;
 
-      if (rawValue == _lastScannedCode && _lastScanTime != null) {
-        final elapsed = DateTime.now().difference(_lastScanTime!).inMilliseconds;
-        if (elapsed < widget.sameItemCooldownMs) return;
+      // Only apply cooldown for multi-scan modes
+      if (widget._mode != _ScanMode.single) {
+        if (rawValue == _lastScannedCode && _lastScanTime != null) {
+          final elapsed = DateTime.now().difference(_lastScanTime!).inMilliseconds;
+          if (elapsed < widget.sameItemCooldownMs) return;
+        }
+
+        _lastScannedCode = rawValue;
+        _lastScanTime = DateTime.now();
       }
 
-      _lastScannedCode = rawValue;
-      _lastScanTime = DateTime.now();
-
       unawaited(HapticFeedback.heavyImpact());
-
       _addScannedItem(rawValue);
     });
   }
 
-  void _addScannedItem(String rawValue) {
+  Future<void> _addScannedItem(String rawValue) async {
     switch (widget._mode) {
       case _ScanMode.single:
-        Navigator.of(context).pop(rawValue);
+        // Lock hardware to prevent ghost scans during the exit animation
+        _isPopping = true;
+        if (!mounted) return;
+        final navigator = Navigator.of(context);
+        await _subscription?.cancel();
+        await controller.stop();
+        navigator.pop(rawValue);
         break;
+
       case _ScanMode.batchPop:
+        // If allowDuplicates is false, reject items already in the list
         if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) return;
+        // Otherwise, add to the list
         scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
         break;
+
       case _ScanMode.callbackStream:
+        // If allowDuplicates is false, reject items already in the list
+        if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) return;
+
+        // Otherwise, store it and fire the callback
+        scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
         widget.onCameraScan?.call(rawValue);
+
         break;
     }
   }
 
-  void _popBackWithListResult() {
-    Navigator.of(context).pop<List<String>>(scannedItemsNotifier.value);
+  Future<void> _popBackWithListResult() async {
+    if (_isPopping) return;
+    _isPopping = true;
+
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+
+    await _subscription?.cancel();
+    await controller.stop();
+
+    navigator.pop<List<String>>(scannedItemsNotifier.value);
+  }
+
+  Future<void> _onPopInvokedWithResult(bool didPop, Object? result) async {
+    print('OnPopInvokedWithResult : $didPop and result:\n$result');
+
+    // If a programmatic pop already happened, we don't need to do anything.
+    if (didPop) return;
+
+    // The tripwire
+    if (_isPopping) return;
+    _isPopping = true;
+
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+
+    await _subscription?.cancel();
+    await controller.stop();
+
+    // Now that the hardware is safely dead, route the data!
+    if (widget._mode == _ScanMode.single) {
+      navigator.pop();
+    } else {
+      navigator.pop(scannedItemsNotifier.value);
+    }
   }
 
   @override
@@ -196,19 +254,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
     _subscription?.cancel();
     controller.dispose();
     super.dispose();
-  }
-
-  void _onPopInvokedWithResult(bool didPop, Object? result) {
-    print('OnPopInvokedWithResult : $didPop and result:\n$result');
-    if (didPop) {
-      controller.stop();
-    } else {
-      if (widget._mode == _ScanMode.single) {
-        Navigator.of(context).pop();
-      } else {
-        _popBackWithListResult();
-      }
-    }
   }
 
   @override
