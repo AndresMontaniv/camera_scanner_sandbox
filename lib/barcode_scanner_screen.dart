@@ -1,6 +1,6 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' show BarcodeFormat, MobileScannerController, BarcodeCapture, CameraFacing, DetectionSpeed;
 
 import 'scanner_view.dart';
@@ -33,6 +33,8 @@ class BarcodeScannerScreen extends StatefulWidget {
   final ScannerOverlayStyle? overlayStyle;
   final List<BarcodeFormat> allowedFormats;
   final void Function(String)? onCameraScan;
+  final void Function()? onScanSubmited;
+  final void Function(String rejected)? onScanRejected;
   final void Function(BuildContext, List<String>)? onShowScannedListPressed;
   final Widget Function(BuildContext, List<String>)? showScannedListBuilder;
 
@@ -52,11 +54,12 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.showFlashButton = true,
     this.showCloseButton = true,
     bool hideToolBar = false,
+    this.onScanRejected,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.single,
        onCameraScan = null,
        showScannedListBuilder = null,
-       // Defaults for single scan where cooldown/duplicates don't apply
+       onScanSubmited = null,
        allowDuplicates = false,
        sameItemCooldownMs = 0,
        detectionTimeoutMs = 250,
@@ -81,6 +84,8 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.showScannedListButton = true,
     this.detectionTimeoutMs = 250,
     this.sameItemCooldownMs = 1500,
+    this.onScanSubmited,
+    this.onScanRejected,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.batchPop,
        hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton && !showScannedListButton),
@@ -105,6 +110,8 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.sameItemCooldownMs = 1500,
     bool hideToolBar = false,
     this.allowDuplicates = true,
+    this.onScanSubmited,
+    this.onScanRejected,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.callbackStream,
        onCameraScan = onDetect,
@@ -195,7 +202,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
         _lastScanTime = DateTime.now();
       }
 
-      unawaited(HapticFeedback.heavyImpact());
       _addScannedItem(rawValue);
     });
   }
@@ -218,17 +224,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
 
       case _ScanMode.batchPop:
         // Check duplicate rules before updating the single source of truth.
-        if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) return;
+        if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) {
+          widget.onScanRejected?.call(rawValue);
+          return;
+        }
         scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
+        widget.onScanSubmited?.call();
         break;
 
       case _ScanMode.callbackStream:
         // Respect duplicate rules for the stream.
-        if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) return;
+        if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) {
+          widget.onScanRejected?.call(rawValue);
+          return;
+        }
         scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
 
         // Fire the real-time stream
         widget.onCameraScan?.call(rawValue);
+        widget.onScanSubmited?.call();
         break;
     }
   }
