@@ -85,9 +85,10 @@ class BarcodeScannerScreen extends StatefulWidget {
     this.detectionTimeoutMs = 250,
     this.sameItemCooldownMs = 1500,
     this.onScanSubmited,
-    this.onScanRejected,
+    void Function(String)? onScanRejected,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.batchPop,
+       onScanRejected = allowDuplicates ? onScanRejected : null,
        hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton && !showScannedListButton),
        onCameraScan = null;
 
@@ -111,10 +112,11 @@ class BarcodeScannerScreen extends StatefulWidget {
     bool hideToolBar = false,
     this.allowDuplicates = true,
     this.onScanSubmited,
-    this.onScanRejected,
+    void Function(String)? onScanRejected,
     this.allowedFormats = const <BarcodeFormat>[],
   }) : _mode = _ScanMode.callbackStream,
        onCameraScan = onDetect,
+       onScanRejected = allowDuplicates ? onScanRejected : null,
        hideToolBar = hideToolBar || (!showFlashButton && !showCloseButton && !showScannedListButton);
 
   @override
