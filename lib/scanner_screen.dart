@@ -114,7 +114,7 @@ class ScannerScreen extends StatefulWidget {
   final List<Widget>? stackChildren;
   final DefaultToolBarConfig? toolBarConfig;
   final ScannerViewConfig? scannerViewConfig;
-  final void Function()? onScanSubmited;
+  final void Function()? onScanSubmitted;
   final void Function(String)? onCameraScan;
   final void Function(String rejected)? onScanRejected;
 
@@ -133,7 +133,7 @@ class ScannerScreen extends StatefulWidget {
     this.scannerViewConfig,
   }) : _mode = _ScanMode.single,
        onCameraScan = null,
-       onScanSubmited = null,
+       onScanSubmitted = null,
        allowDuplicates = false,
        sameItemCooldownMs = 0,
        detectionTimeoutMs = 250;
@@ -146,14 +146,14 @@ class ScannerScreen extends StatefulWidget {
     super.key,
     this.stackChildren,
     this.toolBarConfig,
-    this.onScanSubmited,
+    this.onScanSubmitted,
     this.scannerViewConfig,
     this.allowDuplicates = true,
     this.detectionTimeoutMs = 250,
     this.sameItemCooldownMs = 1500,
     void Function(String)? onScanRejected,
   }) : _mode = _ScanMode.batchPop,
-       onScanRejected = allowDuplicates ? onScanRejected : null,
+       onScanRejected = !allowDuplicates ? onScanRejected : null,
        onCameraScan = null;
 
   /// Opens the scanner for continuous scanning, firing a callback for every valid scan.
@@ -165,7 +165,7 @@ class ScannerScreen extends StatefulWidget {
     required void Function(String) onDetect,
     this.stackChildren,
     this.toolBarConfig,
-    this.onScanSubmited,
+    this.onScanSubmitted,
     this.scannerViewConfig,
     this.detectionTimeoutMs = 250,
     this.sameItemCooldownMs = 1500,
@@ -173,13 +173,13 @@ class ScannerScreen extends StatefulWidget {
     void Function(String)? onScanRejected,
   }) : _mode = _ScanMode.callbackStream,
        onCameraScan = onDetect,
-       onScanRejected = allowDuplicates ? onScanRejected : null;
+       onScanRejected = !allowDuplicates ? onScanRejected : null;
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-const List<BarcodeFormat> _storeProductFormats = [
+const List<BarcodeFormat> _horizontal1DFormats = [
   BarcodeFormat.code128,
   BarcodeFormat.code39,
   BarcodeFormat.code93,
@@ -187,6 +187,8 @@ const List<BarcodeFormat> _storeProductFormats = [
   BarcodeFormat.ean8,
   BarcodeFormat.upcA,
   BarcodeFormat.upcE,
+  BarcodeFormat.itf14,
+  BarcodeFormat.codabar,
 ];
 
 class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserver {
@@ -204,9 +206,9 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
     final allowedFormats = widget.scannerViewConfig?.allowedFormats ?? [];
     if (widget.scannerViewConfig?._mode == _OverlayMode.barcode) {
       if (allowedFormats.isEmpty) {
-        return _storeProductFormats;
+        return _horizontal1DFormats;
       }
-      return allowedFormats.where((f) => _storeProductFormats.contains(f)).toList();
+      return allowedFormats.where((f) => _horizontal1DFormats.contains(f)).toList();
     }
     return allowedFormats;
   }
@@ -291,7 +293,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
           return;
         }
         scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
-        widget.onScanSubmited?.call();
+        widget.onScanSubmitted?.call();
         break;
 
       case _ScanMode.callbackStream:
@@ -304,7 +306,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
 
         // Fire the real-time stream
         widget.onCameraScan?.call(rawValue);
-        widget.onScanSubmited?.call();
+        widget.onScanSubmitted?.call();
         break;
     }
   }
@@ -410,9 +412,6 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
         break;
     }
 
-    if (widget._mode == _ScanMode.callbackStream) {
-      return scannerView;
-    }
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: _onPopInvokedWithResult,
