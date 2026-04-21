@@ -20,7 +20,7 @@ const Offset _barcodeOffset = Offset(0.0, -80.0);
 /// route scanned data (pop a single value, accumulate a batch, or stream).
 enum _ScanMode { single, batchPop, callbackStream }
 
-// ─── Configuration Object: DefaultToolBarConfig ─────────────────────────────
+// ─── Configuration Object: ToolBarConfig ─────────────────────────────
 
 /// **Configuration Object Pattern** — encapsulates every toolbar-related
 /// parameter into a single object so the main [ScannerScreen] constructors
@@ -28,15 +28,15 @@ enum _ScanMode { single, batchPop, callbackStream }
 ///
 /// Two factory shapes are provided:
 ///
-/// * **[DefaultToolBarConfig.new]** — for single-scan or simple multi-scan
+/// * **[ToolBarConfig.new]** — for single-scan or simple multi-scan
 ///   scenarios where only the flash and close buttons are relevant.
-/// * **[DefaultToolBarConfig.multiscan]** — additionally exposes the
+/// * **[ToolBarConfig.multiscan]** — additionally exposes the
 ///   "scanned list" button, its builder, and its tap callback, which only
 ///   make sense when the scanner accumulates multiple items.
 ///
 /// If every button flag is `false`, [shouldBuildToolBar] returns `false` and
 /// the toolbar widget is omitted from the tree entirely, saving a layout pass.
-class DefaultToolBarConfig {
+class ToolBarConfig {
   /// Master flag — `true` when *all* individual button flags are off.
   final bool _hideToolBar;
 
@@ -65,7 +65,7 @@ class DefaultToolBarConfig {
   ///
   /// The scanned-list button is always hidden in this variant because there
   /// is no internal list to display.
-  const DefaultToolBarConfig({
+  const ToolBarConfig({
     this.showFlashButton = true,
     this.showCloseButton = true,
     this.onFlashButtonError,
@@ -78,7 +78,7 @@ class DefaultToolBarConfig {
   ///
   /// Exposes the scanned-list button and its customization hooks alongside
   /// the standard flash and close buttons.
-  const DefaultToolBarConfig.multiscan({
+  const ToolBarConfig.multiscan({
     this.showFlashButton = true,
     this.showCloseButton = true,
     this.showScannedListButton = true,
@@ -87,6 +87,12 @@ class DefaultToolBarConfig {
     this.showScannedListBuilder,
   }) : _hideToolBar = !showFlashButton && !showCloseButton && !showScannedListButton;
 
+  ToolBarConfig transformToRegular() => ToolBarConfig(
+    showFlashButton: showFlashButton,
+    showCloseButton: showCloseButton,
+    onFlashButtonError: onFlashButtonError,
+  );
+
   /// Returns `true` when at least one button is visible, meaning the toolbar
   /// widget should be inserted into the overlay stack.
   bool get shouldBuildToolBar => !_hideToolBar;
@@ -94,12 +100,14 @@ class DefaultToolBarConfig {
 
 /// Null-safe convenience extension so callers can query toolbar flags directly
 /// on a nullable [DefaultToolBarConfig?] without verbose null-checks.
-extension ToolBarConfigExtension on DefaultToolBarConfig? {
+extension ToolBarConfigExtension on ToolBarConfig? {
   bool get shouldBuildToolBar => this == null ? false : this!.shouldBuildToolBar;
 
   bool get showFlashButton => this == null ? false : this!.showFlashButton;
   bool get showCloseButton => this == null ? false : this!.showCloseButton;
   bool get showScannedListButton => this == null ? false : this!.showScannedListButton;
+
+  ToolBarConfig? transformToRegular() => this?.transformToRegular();
 }
 
 // ─── Configuration Object: ScannerViewConfig ────────────────────────────────
@@ -195,7 +203,7 @@ class ScannerViewConfig {
 /// two configuration objects.
 ///
 /// ### Visual/Hardware Configuration
-/// Handled entirely by [DefaultToolBarConfig] (toolbar buttons and callbacks)
+/// Handled entirely by [ToolBarConfig] (toolbar buttons and callbacks)
 /// and [ScannerViewConfig] (scan window shape, overlay styling, and allowed
 /// barcode formats).  This keeps every constructor's parameter list short.
 ///
@@ -235,7 +243,7 @@ class ScannerScreen extends StatefulWidget {
 
   /// Toolbar configuration object.  Pass `null` or omit to hide the toolbar
   /// entirely.
-  final DefaultToolBarConfig? toolBarConfig;
+  final ToolBarConfig? toolBarConfig;
 
   /// Visual/hardware configuration object that determines the overlay shape
   /// and allowed barcode formats.
@@ -584,7 +592,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
   //   2. Cache the navigator BEFORE the async gap.
   //   3. Cancel the stream subscription and stop the camera hardware.
   //   4. Pop with the accumulated list.
-  Future<void> _popBackWithListResult() async {
+  Future<void> _popBack() async {
     // Prevent double-tapping the close button from triggering two pops.
     if (_isPopping) return;
     _isPopping = true;
@@ -592,11 +600,17 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
     if (!mounted) return;
     final navigator = Navigator.of(context);
 
-    // Safely await hardware spin-down to prevent camera lock crashes on the next screen
     await _subscription?.cancel();
     await controller.stop();
 
-    navigator.pop<List<String>>(scannedItemsNotifier.value);
+    // Now that the hardware is safely dead, route the data manually.
+    // Single mode returns nothing (the user backed out without scanning).
+    // Multi modes return the accumulated list (which may be empty).
+    if (widget._mode == _ScanMode.single) {
+      navigator.pop();
+    } else {
+      navigator.pop<List<String>>(scannedItemsNotifier.value);
+    }
   }
 
   // ── PopScope / System Back-Button Interception ────────────────────────
@@ -622,29 +636,11 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
   // initiated ourselves via `navigator.pop()`) already succeeded.  If
   // `true`, we don't need to do anything — our teardown has already run.
   Future<void> _onPopInvokedWithResult(bool didPop, Object? result) async {
-    print('OnPopInvokedWithResult : $didPop and result:\n$result');
-
     // If didPop is true, a programmatic pop just succeeded. We do nothing.
     if (didPop) return;
 
     // The user triggered a system back swipe. Intercept it and lock the hardware.
-    if (_isPopping) return;
-    _isPopping = true;
-
-    if (!mounted) return;
-    final navigator = Navigator.of(context);
-
-    await _subscription?.cancel();
-    await controller.stop();
-
-    // Now that the hardware is safely dead, route the data manually.
-    // Single mode returns nothing (the user backed out without scanning).
-    // Multi modes return the accumulated list (which may be empty).
-    if (widget._mode == _ScanMode.single) {
-      navigator.pop();
-    } else {
-      navigator.pop(scannedItemsNotifier.value);
-    }
+    _popBack();
   }
 
   @override
@@ -660,18 +656,15 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     // Assemble the overlay stack: toolbar first (if configured), then any
     // caller-supplied children layered on top.
+    final toolBarConfig = widget._mode == _ScanMode.single ? widget.toolBarConfig?.transformToRegular() : widget.toolBarConfig;
+
     final List<Widget> stackChildren = [
-      if (widget.toolBarConfig.shouldBuildToolBar)
+      if (toolBarConfig?.shouldBuildToolBar ?? false)
         _DefaultToolBar(
+          config: toolBarConfig,
           controller: controller,
+          popBackWithListResult: _popBack,
           scannedItemsNotifier: scannedItemsNotifier,
-          popBackWithListResult: _popBackWithListResult,
-          showCloseButton: widget.toolBarConfig.showCloseButton,
-          showFlashButton: widget.toolBarConfig.showFlashButton,
-          onFlashButtonError: widget.toolBarConfig?.onFlashButtonError,
-          showScannedListButton: widget.toolBarConfig.showScannedListButton,
-          showScannedListBuilder: widget.toolBarConfig?.showScannedListBuilder,
-          onShowScannedListPressed: widget.toolBarConfig?.onShowScannedListPressed,
         ),
       ...?widget.stackChildren,
     ];
@@ -737,26 +730,16 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
 /// * **Scanned list badge** (trailing) — shows the count of scanned items;
 ///   tapping it opens a bottom sheet (or fires the caller's custom handler).
 class _DefaultToolBar extends StatelessWidget {
-  final bool showCloseButton;
-  final bool showFlashButton;
-  final bool showScannedListButton;
+  final ToolBarConfig? config;
   final MobileScannerController? controller;
   final ValueNotifier<List<String>> scannedItemsNotifier;
   final void Function()? popBackWithListResult;
-  final void Function(Object error)? onFlashButtonError;
-  final void Function(BuildContext, List<String>)? onShowScannedListPressed;
-  final Widget Function(BuildContext, List<String>)? showScannedListBuilder;
 
   const _DefaultToolBar({
+    required this.config,
     required this.controller,
     required this.scannedItemsNotifier,
-    required this.showCloseButton,
-    required this.showFlashButton,
-    required this.showScannedListButton,
-    required this.onFlashButtonError,
     required this.popBackWithListResult,
-    required this.showScannedListBuilder,
-    required this.onShowScannedListPressed,
   });
 
   /// Default bottom-sheet that displays the list of scanned items.
@@ -817,7 +800,7 @@ class _DefaultToolBar extends StatelessWidget {
                     child: ListView.separated(
                       controller: scrollController,
                       itemCount: scannedItems.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         return ListTile(
                           leading: CircleAvatar(
@@ -846,21 +829,23 @@ class _DefaultToolBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onShowScannedListPressed = config?.onShowScannedListPressed;
     return ScannerTopBar.custom(
-      leading: showCloseButton ? CircleCloseButton(pop: popBackWithListResult) : null,
+      leading: config.showCloseButton ? CircleCloseButton(pop: popBackWithListResult) : null,
       trailing: [
         Visibility(
-          visible: showFlashButton,
+          visible: config.showFlashButton,
           child: FlashToggleButton(controller: controller),
         ),
         Visibility(
-          visible: showScannedListButton,
+          visible: config.showScannedListButton,
           child: ValueListenableBuilder<List<String>>(
             valueListenable: scannedItemsNotifier,
             builder: (ctx, scannedItems, _) {
+              final showScannedListBuilder = config?.showScannedListBuilder;
               // If the caller supplied a fully custom builder, hand off to it.
               if (showScannedListBuilder != null) {
-                return showScannedListBuilder!.call(ctx, scannedItems);
+                return showScannedListBuilder.call(ctx, scannedItems);
               }
               // Otherwise render the default badge-over-icon button.
               final total = scannedItems.length;
@@ -876,7 +861,7 @@ class _DefaultToolBar extends StatelessWidget {
                   ),
                   child: IconButton(
                     onPressed: () => onShowScannedListPressed != null
-                        ? onShowScannedListPressed!.call(ctx, scannedItems)
+                        ? onShowScannedListPressed.call(ctx, scannedItems)
                         : _onShowScanListPressed(ctx, scannedItems),
                     icon: const Icon(Icons.list, color: Colors.white, size: 28),
                   ),
