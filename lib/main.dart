@@ -119,8 +119,7 @@ class TestMatrixScreen extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (_) => ScannerScreen.multiScanBatchPop(
                     scannerViewConfig: const ScannerViewConfig.qrCode(),
-                    toolBarConfig: const ToolBarConfig.multiscan(),
-                    allowDuplicates: false,
+                    toolBarConfig: const ToolBarConfig(),
                     onScanRejected: _playRejectBuzz,
                   ),
                 ),
@@ -151,11 +150,15 @@ class TestMatrixScreen extends StatelessWidget {
             title: const Text('Batch + Custom'),
             trailing: const Icon(Icons.fullscreen),
             onTap: () async {
+              final screenSize = MediaQuery.sizeOf(context);
               final result = await Navigator.push<List<String>>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ScannerScreen.multiScanBatchPop(
-                    scannerViewConfig: const ScannerViewConfig(),
+                    scannerViewConfig: ScannerViewConfig(
+                      scanWindow: Rect.fromCenter(center: screenSize.center(Offset.zero), width: 80, height: 300),
+                      overlayStyle: const ScannerOverlayStyle(borderColor: Colors.yellow, borderRadius: 40.0),
+                    ),
                     toolBarConfig: const ToolBarConfig.multiscan(),
                   ),
                 ),
@@ -183,6 +186,10 @@ class TestMatrixScreen extends StatelessWidget {
                   builder: (_) => ScannerScreen.multiScanCallbackStream(
                     scannerViewConfig: const ScannerViewConfig.qrCode(),
                     onDetect: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
+                    onScanSubmitted: () {
+                      // TODO: here play sound
+                      debugPrint('PLAY SOUND!!!');
+                    },
                   ),
                 ),
               );
@@ -198,6 +205,7 @@ class TestMatrixScreen extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (_) => ScannerScreen.multiScanCallbackStream(
                     scannerViewConfig: const ScannerViewConfig.barcode(),
+                    toolBarConfig: const ToolBarConfig.multiscan(),
                     allowDuplicates: false,
                     onDetect: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
                     onScanRejected: _playRejectBuzz,
