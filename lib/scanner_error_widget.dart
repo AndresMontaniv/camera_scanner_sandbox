@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart' show MobileScannerException, MobileScannerErrorCode;
+part of 'scanner_view.dart';
 
-class ScannerErrorWidget extends StatelessWidget {
-  const ScannerErrorWidget({super.key, required this.error});
+class _ScannerErrorWidget extends StatelessWidget {
+  const _ScannerErrorWidget({required this.error});
 
   final MobileScannerException error;
 

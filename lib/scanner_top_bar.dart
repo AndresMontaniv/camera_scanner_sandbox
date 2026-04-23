@@ -1,8 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-
-import 'circle_close_button.dart';
-import 'flash_toggle_button.dart';
+part of 'scanner_screen.dart';
 
 const assertMsg =
     'Scanner Package Error: ScannerTopBar must show at least one button (close or flash). If you want an empty top bar, remove the ScannerTopBar from the widget tree entirely for better performance.';
@@ -75,9 +71,9 @@ class ScannerTopBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        if (showCloseButton) const CircleCloseButton(),
+        if (showCloseButton) const _CircleCloseButton(),
         if (showFlashButton)
-          FlashToggleButton(
+          _FlashToggleButton(
             controller: controller,
             onError: onFlashButtonError,
           ),
@@ -102,6 +98,128 @@ class ScannerTopBar extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ─── Private Toolbar Buttons ────────────────────────────────────────────────
+
+class _CircleButton extends StatelessWidget {
+  const _CircleButton({
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.black54,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton.outlined(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        color: Colors.white,
+        iconSize: 30,
+      ),
+    );
+  }
+}
+
+class _CircleCloseButton extends StatelessWidget {
+  final void Function()? pop;
+  const _CircleCloseButton({this.pop});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.black45,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        icon: const Icon(Icons.close, color: Colors.white, size: 28),
+        onPressed: () {
+          if (Navigator.of(context).canPop()) {
+            if (pop != null) {
+              pop?.call();
+            } else {
+              Navigator.of(context).pop();
+            }
+          } else {
+            debugPrint('CircleCloseButton: No routes to pop');
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _FlashToggleButton extends StatelessWidget {
+  final MobileScannerController? controller;
+  final void Function(Object error)? onError;
+
+  const _FlashToggleButton({
+    this.controller,
+    this.onError,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller == null) {
+      return _buildDisabledButton();
+    }
+
+    return ValueListenableBuilder<MobileScannerState>(
+      valueListenable: controller!,
+      builder: (_, state, _) {
+        if (state.torchState == TorchState.unavailable) {
+          return _buildDisabledButton();
+        }
+        final isOn = state.torchState == TorchState.on;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: isOn ? Colors.white : Colors.black45,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: Icon(
+              isOn ? Icons.flash_on : Icons.flash_off,
+              color: isOn ? Colors.black : Colors.white,
+              size: 28,
+            ),
+            onPressed: () async {
+              try {
+                await controller?.toggleTorch();
+              } catch (e) {
+                debugPrint('Scanner Package: Failed to toggle torch - $e');
+                onError?.call(e);
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDisabledButton() {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        icon: Icon(
+          Icons.flash_off,
+          color: Colors.white24,
+          size: 28,
+        ),
+        onPressed: null,
+      ),
     );
   }
 }

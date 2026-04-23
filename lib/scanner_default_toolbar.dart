@@ -138,11 +138,11 @@ class _DefaultToolBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final onShowScannedListPressed = config?.onShowScannedListPressed;
     return ScannerTopBar.custom(
-      leading: config.showCloseButton ? CircleCloseButton(pop: popBackWithListResult) : null,
+      leading: config.showCloseButton ? _CircleCloseButton(pop: popBackWithListResult) : null,
       trailing: [
         Visibility(
           visible: config.showFlashButton,
-          child: FlashToggleButton(controller: controller),
+          child: _FlashToggleButton(controller: controller),
         ),
         Visibility(
           visible: config.showScannedListButton,

@@ -1,16 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart' show BarcodeFormat, MobileScannerController, BarcodeCapture, CameraFacing, DetectionSpeed;
+import 'package:mobile_scanner/mobile_scanner.dart' show BarcodeFormat, MobileScannerController, MobileScannerState, TorchState, BarcodeCapture, CameraFacing, DetectionSpeed;
 
 import 'scanner_view.dart';
 import 'scanner_overlay.dart';
-import 'scanner_top_bar.dart';
-import 'flash_toggle_button.dart';
-import 'circle_close_button.dart';
 
 part 'scanner_configs.dart';
 part 'scanner_default_toolbar.dart';
+part 'scanner_top_bar.dart';
 
 // ─── ScannerScreen ──────────────────────────────────────────────────────────
 
