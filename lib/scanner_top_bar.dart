@@ -105,26 +105,32 @@ class ScannerTopBar extends StatelessWidget {
 // ─── Private Toolbar Buttons ────────────────────────────────────────────────
 
 class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color backgroundColor;
+  final VoidCallback? onPressed;
+
   const _CircleButton({
     required this.icon,
-    required this.onPressed,
+    required this.iconColor,
+    required this.backgroundColor,
+    this.onPressed,
   });
-
-  final IconData icon;
-  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Colors.black54,
+      decoration: BoxDecoration(
+        color: backgroundColor,
         shape: BoxShape.circle,
       ),
-      child: IconButton.outlined(
+      child: IconButton(
+        icon: Icon(
+          icon,
+          color: iconColor,
+          size: 28,
+        ),
         onPressed: onPressed,
-        icon: Icon(icon),
-        color: Colors.white,
-        iconSize: 30,
       ),
     );
   }
@@ -136,25 +142,34 @@ class _CircleCloseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Colors.black45,
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        icon: const Icon(Icons.close, color: Colors.white, size: 28),
-        onPressed: () {
-          if (Navigator.of(context).canPop()) {
-            if (pop != null) {
-              pop?.call();
-            } else {
-              Navigator.of(context).pop();
-            }
+    return _CircleButton(
+      icon: Icons.close,
+      iconColor: Colors.white,
+      backgroundColor: Colors.black45,
+      onPressed: () {
+        if (Navigator.of(context).canPop()) {
+          if (pop != null) {
+            pop?.call();
           } else {
-            debugPrint('CircleCloseButton: No routes to pop');
+            Navigator.of(context).pop();
           }
-        },
-      ),
+        } else {
+          debugPrint('CircleCloseButton: No routes to pop');
+        }
+      },
+    );
+  }
+}
+
+class _DisabledFlashButton extends StatelessWidget {
+  const _DisabledFlashButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _CircleButton(
+      icon: Icons.flash_off,
+      iconColor: Colors.white24,
+      backgroundColor: Colors.black26,
     );
   }
 }
@@ -171,55 +186,30 @@ class _FlashToggleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (controller == null) {
-      return _buildDisabledButton();
+      return const _DisabledFlashButton();
     }
 
     return ValueListenableBuilder<MobileScannerState>(
       valueListenable: controller!,
       builder: (_, state, _) {
         if (state.torchState == TorchState.unavailable) {
-          return _buildDisabledButton();
+          return const _DisabledFlashButton();
         }
         final isOn = state.torchState == TorchState.on;
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: isOn ? Colors.white : Colors.black45,
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: Icon(
-              isOn ? Icons.flash_on : Icons.flash_off,
-              color: isOn ? Colors.black : Colors.white,
-              size: 28,
-            ),
-            onPressed: () async {
-              try {
-                await controller?.toggleTorch();
-              } catch (e) {
-                debugPrint('Scanner Package: Failed to toggle torch - $e');
-                onError?.call(e);
-              }
-            },
-          ),
+        return _CircleButton(
+          icon: isOn ? Icons.flash_on : Icons.flash_off,
+          iconColor: isOn ? Colors.black : Colors.white,
+          backgroundColor: isOn ? Colors.white : Colors.black45,
+          onPressed: () async {
+            try {
+              await controller?.toggleTorch();
+            } catch (e) {
+              debugPrint('Scanner Package: Failed to toggle torch - $e');
+              onError?.call(e);
+            }
+          },
         );
       },
-    );
-  }
-
-  Widget _buildDisabledButton() {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black26,
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        icon: Icon(
-          Icons.flash_off,
-          color: Colors.white24,
-          size: 28,
-        ),
-        onPressed: null,
-      ),
     );
   }
 }
