@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'functions.dart';
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
 
@@ -40,16 +41,9 @@ class TestMatrixScreen extends StatelessWidget {
             title: const Text('Single + QR Code'),
             trailing: const Icon(Icons.qr_code),
             onTap: () async {
-              final result = await Navigator.push<String>(
+              final result = await scanQrCode(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const ScannerScreen.singleScan(
-                    toolBarConfig: ToolBarConfig(),
-                    scannerViewConfig: ScannerViewConfig.qrCode(
-                      overlayStyle: ScannerOverlayStyle(borderColor: Colors.blue),
-                    ),
-                  ),
-                ),
+                overlayStyle: const ScannerOverlayStyle(borderColor: Colors.blue),
               );
               debugPrint('✅ Single QR Result: $result');
             },
@@ -58,17 +52,10 @@ class TestMatrixScreen extends StatelessWidget {
             title: const Text('Single + Barcode'),
             trailing: const Icon(Icons.view_column),
             onTap: () async {
-              final result = await Navigator.push<String>(
+              final result = await scanBarcode(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const ScannerScreen.singleScan(
-                    toolBarConfig: ToolBarConfig(),
-                    scannerViewConfig: ScannerViewConfig.barcode(
-                      overlayStyle: ScannerOverlayStyle(borderColor: Colors.pink),
-                      offsetFromCenter: Offset(0, 100),
-                    ),
-                  ),
-                ),
+                overlayStyle: const ScannerOverlayStyle(borderColor: Colors.pink),
+                offsetFromCenter: const Offset(0, 100),
               );
               debugPrint('✅ Single Barcode Result: $result');
             },
@@ -78,14 +65,10 @@ class TestMatrixScreen extends StatelessWidget {
             trailing: const Icon(Icons.fullscreen),
             onTap: () async {
               final screenSize = MediaQuery.sizeOf(context);
-              final result = await Navigator.push<String>(
+              final result = await scanCustom(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ScannerScreen.singleScan(
-                    scannerViewConfig: ScannerViewConfig(
-                      scanWindow: Rect.fromCenter(center: screenSize.center(Offset.zero), width: 200, height: 200),
-                    ),
-                  ),
+                scannerViewConfig: ScannerViewConfig(
+                  scanWindow: Rect.fromCenter(center: screenSize.center(Offset.zero), width: 200, height: 200),
                 ),
               );
               debugPrint('✅ Single Custom Result: $result');
@@ -101,37 +84,20 @@ class TestMatrixScreen extends StatelessWidget {
             ),
           ),
           ListTile(
-            title: const Text('Batch + QR Code (Allow Duplicates)'),
+            title: const Text('Batch + QR Code (REJECT Duplicates)'),
             subtitle: const Text('Test cart list button'),
             trailing: const Icon(Icons.qr_code),
             onTap: () async {
-              final result = await Navigator.push<List<String>>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ScannerScreen.multiscan(
-                    toolBarConfig: ToolBarConfig(),
-                    scannerViewConfig: ScannerViewConfig.qrCode(),
-                  ),
-                ),
-              );
+              final result = await scanQrCodeBatch(context, allowDuplicates: false);
               debugPrint('🛒 Batch QR Result: $result');
             },
           ),
           ListTile(
-            title: const Text('Batch + Barcode (REJECT Duplicates)'),
-            subtitle: const Text('Scan same item twice to test Reject buzz'),
+            title: const Text('Batch + Barcode (Allow Duplicates)'),
+            subtitle: const Text('Scan same item twice to test'),
             trailing: const Icon(Icons.view_column),
             onTap: () async {
-              final result = await Navigator.push<List<String>>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ScannerScreen.multiscan(
-                    toolBarConfig: ToolBarConfig.multiscan(),
-                    scannerViewConfig: ScannerViewConfig.barcode(),
-                    allowDuplicates: false,
-                  ),
-                ),
-              );
+              final result = await scanBarcodeBatch(context, allowDuplicates: true);
               debugPrint('🛒 Batch Barcode Result: $result');
             },
           ),
@@ -140,16 +106,12 @@ class TestMatrixScreen extends StatelessWidget {
             trailing: const Icon(Icons.fullscreen),
             onTap: () async {
               final screenSize = MediaQuery.sizeOf(context);
-              final result = await Navigator.push<List<String>>(
+              final result = await scanCustomBatch(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiscan(
-                    scannerViewConfig: ScannerViewConfig(
-                      scanWindow: Rect.fromCenter(center: screenSize.center(Offset.zero), width: 80, height: 300),
-                      overlayStyle: const ScannerOverlayStyle(borderColor: Colors.yellow, borderRadius: 40.0),
-                    ),
-                    toolBarConfig: const ToolBarConfig.multiscan(),
-                  ),
+                toolBarConfig: const ToolBarConfig.multiscan(),
+                scannerViewConfig: ScannerViewConfig(
+                  scanWindow: Rect.fromCenter(center: screenSize.center(Offset.zero), width: 80, height: 300),
+                  overlayStyle: const ScannerOverlayStyle(borderColor: Colors.yellow, borderRadius: 40.0),
                 ),
               );
               debugPrint('🛒 Batch Custom Result: $result');
@@ -169,14 +131,9 @@ class TestMatrixScreen extends StatelessWidget {
             subtitle: const Text('Watch debug console for real-time prints'),
             trailing: const Icon(Icons.qr_code),
             onTap: () async {
-              await Navigator.push(
+              await scanQrCodeStream(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiscan(
-                    scannerViewConfig: const ScannerViewConfig.qrCode(),
-                    onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
-                  ),
-                ),
+                onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
               );
             },
           ),
@@ -185,16 +142,10 @@ class TestMatrixScreen extends StatelessWidget {
             subtitle: const Text('Scan same item twice to test Reject buzz'),
             trailing: const Icon(Icons.view_column),
             onTap: () async {
-              await Navigator.push(
+              await scanBarcodeStream(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiscan(
-                    scannerViewConfig: const ScannerViewConfig.barcode(),
-                    toolBarConfig: const ToolBarConfig.multiscan(),
-                    allowDuplicates: false,
-                    onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
-                  ),
-                ),
+                allowDuplicates: false,
+                onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
               );
             },
           ),
@@ -202,14 +153,9 @@ class TestMatrixScreen extends StatelessWidget {
             title: const Text('Stream + Custom'),
             trailing: const Icon(Icons.fullscreen),
             onTap: () async {
-              await Navigator.push(
+              await scanCustomStream(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiscan(
-                    scannerViewConfig: const ScannerViewConfig(),
-                    onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
-                  ),
-                ),
+                onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
               );
             },
           ),
