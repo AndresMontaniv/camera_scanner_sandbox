@@ -1,9 +1,19 @@
+/// This file implements the Facade pattern for the [ScannerScreen] widget,
+/// providing the primary public API for developers. It abstracts away the
+/// internal configuration objects and presents nine clean, distinct functions
+/// (Single, Batch, and Stream × Custom, Barcode, and QR Code) for simple integration.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
 
+/// Opens the scanner for a **Single** scan with a custom overlay configuration.
+///
+/// Locks the camera hardware immediately after the first successful read
+/// and returns the scanned value as a `String?`. Returns `null` if canceled.
 Future<String?> scanCustom(
   BuildContext context, {
   List<Widget>? stackChildren,
@@ -40,6 +50,10 @@ Future<String?> scanCustom(
   }
 }
 
+/// Opens the scanner for a **Single** scan optimized for horizontal Barcodes.
+///
+/// Locks the camera hardware immediately after the first successful read
+/// and returns the scanned value as a `String?`. Returns `null` if canceled.
 Future<String?> scanBarcode(
   BuildContext context, {
   List<Widget>? stackChildren,
@@ -64,6 +78,10 @@ Future<String?> scanBarcode(
   );
 }
 
+/// Opens the scanner for a **Single** scan optimized for QR Codes.
+///
+/// Locks the camera hardware immediately after the first successful read
+/// and returns the scanned value as a `String?`. Returns `null` if canceled.
 Future<String?> scanQrCode(
   BuildContext context, {
   List<Widget>? stackChildren,
@@ -86,6 +104,10 @@ Future<String?> scanQrCode(
   );
 }
 
+/// Opens the scanner in **Batch** mode with a custom overlay configuration.
+///
+/// Acts as a shopping cart: the user can scan multiple items. When the
+/// user closes the screen, it returns the accumulated `List<String>?`.
 Future<List<String>?> scanCustomBatch(
   BuildContext context, {
   List<Widget>? stackChildren,
@@ -128,6 +150,10 @@ Future<List<String>?> scanCustomBatch(
   }
 }
 
+/// Opens the scanner in **Batch** mode optimized for horizontal Barcodes.
+///
+/// Acts as a shopping cart: the user can scan multiple items. When the
+/// user closes the screen, it returns the accumulated `List<String>?`.
 Future<List<String>?> scanBarcodeBatch(
   BuildContext context, {
   List<Widget>? stackChildren,
@@ -158,6 +184,10 @@ Future<List<String>?> scanBarcodeBatch(
   );
 }
 
+/// Opens the scanner in **Batch** mode optimized for QR Codes.
+///
+/// Acts as a shopping cart: the user can scan multiple items. When the
+/// user closes the screen, it returns the accumulated `List<String>?`.
 Future<List<String>?> scanQrCodeBatch(
   BuildContext context, {
   List<Widget>? stackChildren,
@@ -186,6 +216,11 @@ Future<List<String>?> scanQrCodeBatch(
   );
 }
 
+/// Opens the scanner in **Stream** mode with a custom overlay configuration.
+///
+/// Streams real-time data to the [onCameraScan] callback as each item is
+/// successfully scanned. The `Future<void>` completes when the user closes
+/// the scanner screen.
 Future<void> scanCustomStream(
   BuildContext context, {
   required void Function(String) onCameraScan,
@@ -219,6 +254,11 @@ Future<void> scanCustomStream(
   }
 }
 
+/// Opens the scanner in **Stream** mode optimized for horizontal Barcodes.
+///
+/// Streams real-time data to the [onCameraScan] callback as each item is
+/// successfully scanned. The `Future<void>` completes when the user closes
+/// the scanner screen.
 Future<void> scanBarcodeStream(
   BuildContext context, {
   required void Function(String) onCameraScan,
@@ -249,6 +289,11 @@ Future<void> scanBarcodeStream(
   enableSoundAndVibration: enableSoundAndVibration,
 );
 
+/// Opens the scanner in **Stream** mode optimized for QR Codes.
+///
+/// Streams real-time data to the [onCameraScan] callback as each item is
+/// successfully scanned. The `Future<void>` completes when the user closes
+/// the scanner screen.
 Future<void> scanQrCodeStream(
   BuildContext context, {
   required void Function(String) onCameraScan,

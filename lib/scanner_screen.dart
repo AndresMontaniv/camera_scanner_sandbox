@@ -15,7 +15,7 @@ part 'scanner_top_bar.dart';
 // ─── ScannerScreen ──────────────────────────────────────────────────────────
 
 /// A production-grade, unified barcode-scanner widget that supports **nine**
-/// visual × data-routing combinations through three named constructors and
+/// visual × data-routing combinations through two named constructors and
 /// two configuration objects.
 ///
 /// ### Visual/Hardware Configuration
@@ -28,8 +28,10 @@ part 'scanner_top_bar.dart';
 /// | Constructor                                 | Return type on pop   | Real-time callback? |
 /// |---------------------------------------------|----------------------|---------------------|
 /// | [ScannerScreen.singleScan]                  | `String?`            | No                  |
-/// | [ScannerScreen.multiScanBatchPop]            | `List<String>`       | Per-scan via [onScanSubmitted] |
-/// | [ScannerScreen.multiScanCallbackStream]      | `void` (nothing)     | Per-scan via [onCameraScan]     |
+/// | [ScannerScreen.multiscan]                   | `List<String>?`      | Optional via [onCameraScan] |
+/// 
+/// Note: [ScannerScreen.multiscan] handles both batch routing (accumulating a list and returning it on pop) 
+/// and stream routing (firing [onCameraScan] continuously as barcodes are scanned).
 ///
 /// ### Hardware Safety
 /// This widget implements an [_isPopping] **hardware safety tripwire**.  The
@@ -65,9 +67,9 @@ class ScannerScreen extends StatefulWidget {
   /// and allowed barcode formats.
   final ScannerViewConfig? scannerViewConfig;
 
-  /// Real-time scan callback — the primary data channel for the
-  /// [multiScanCallbackStream] constructor.  This is `null` in the other
-  /// two modes.
+  /// Real-time scan callback — the primary data channel for the stream
+  /// routing mode of the [multiscan] constructor. This is `null` in
+  /// single scan mode.
   final void Function(String)? onCameraScan;
 
   /// Fires when a scan is **rejected** because [allowDuplicates] is `false`
@@ -94,7 +96,7 @@ class ScannerScreen extends StatefulWidget {
   /// Because only one value is ever captured:
   /// * [allowDuplicates] is hard-coded to `false`.
   /// * [sameItemCooldownMs] is `0` (irrelevant).
-  /// * [onCameraScan] and [onScanSubmitted] are forced to `null`.
+  /// * [onCameraScan] is forced to `null`.
   const ScannerScreen.singleScan({
     super.key,
     this.stackChildren,
@@ -108,6 +110,15 @@ class ScannerScreen extends StatefulWidget {
        sameItemCooldownMs = 0,
        detectionTimeoutMs = 250;
 
+  /// **Multi-Scan Mode** — opens the scanner to read **multiple** barcodes.
+  /// 
+  /// ### Routing Capabilities
+  /// This constructor handles two routing paradigms simultaneously:
+  /// 1. **Batch Routing**: Acts as a shopping cart. Every accepted scan is 
+  ///    added to an internal list, which is returned as `List<String>?` when 
+  ///    the screen is popped.
+  /// 2. **Stream Routing**: If [onCameraScan] is provided, every accepted scan
+  ///    fires this callback in real-time.
   const ScannerScreen.multiscan({
     super.key,
     this.stackChildren,
@@ -268,9 +279,9 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
   // This method is the single entry point for every accepted barcode.  It
   // switches on `_ScanMode` to decide how to route the value:
   //
-  //   • single       → lock hardware, pop with the raw value.
-  //   • batchPop     → append to list (with optional duplicate rejection).
-  //   • callbackStream → append to list AND fire the real-time callback.
+  //   • single    → lock hardware, pop with the raw value.
+  //   • multiscan → append to list (with optional duplicate rejection),
+  //                 AND fire the real-time callback if provided.
   //
   // Each branch handles its own duplicate-rejection logic so that the
   // `onScanRejected` callback fires in the right context.

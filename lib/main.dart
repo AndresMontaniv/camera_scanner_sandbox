@@ -1,3 +1,10 @@
+/// Sandbox / Test Matrix for the 9-in-1 scanner configurations.
+///
+/// This application provides a simple UI to test and verify all nine
+/// combinations of visual overlays and data routing modes exposed by
+/// the [ScannerScreen] facade.
+library;
+
 import 'package:flutter/material.dart';
 
 import 'functions.dart';
