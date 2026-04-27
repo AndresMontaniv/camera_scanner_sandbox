@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'functions.dart';
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
+import 'testing_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,9 +35,28 @@ class TestMatrixScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('9-in-1 Scanner Matrix Test')),
+      appBar: AppBar(title: const Text('Camera Scanner Sandbox')),
       body: ListView(
         children: [
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text(
+              '0. Test Screen',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+            ),
+          ),
+          ListTile(
+            title: const Text('Go to Test Screen'),
+            trailing: const Icon(Icons.qr_code),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TestingScreen(),
+                ),
+              );
+            },
+          ),
           const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text(
