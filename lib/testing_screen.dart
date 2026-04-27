@@ -34,6 +34,7 @@ class _TestingScreenState extends State<TestingScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             LiveBarcodeScannerWidget(
+              height: 100.0,
               onBarcodeScanned: _onScanned,
             ),
             const SizedBox(height: 30),
@@ -59,6 +60,7 @@ class LiveBarcodeScannerWidget extends StatefulWidget {
   final void Function(String barcode) onBarcodeScanned;
   final bool enableSoundAndVibration;
   final int sameItemCooldownMs;
+  final Duration idleTimeout;
 
   const LiveBarcodeScannerWidget({
     super.key,
@@ -67,6 +69,7 @@ class LiveBarcodeScannerWidget extends StatefulWidget {
     this.height = 130,
     this.enableSoundAndVibration = true,
     this.sameItemCooldownMs = 1500,
+    this.idleTimeout = const Duration(seconds: 30),
   });
 
   @override
@@ -80,6 +83,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
     detectionSpeed: DetectionSpeed.normal,
   );
   StreamSubscription<BarcodeCapture>? _subscription;
+  Timer? _idleTimer;
 
   bool _isCameraActive = false;
   String? _lastScannedCode;
@@ -104,13 +108,26 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
       case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
+        _cancelIdleTimer();
         _subscription?.pause();
         _controller.stop();
         break;
       case AppLifecycleState.resumed:
         _controller.start();
         _subscription?.resume();
+        _resetIdleTimer();
         break;
+    }
+  }
+
+  void _cancelIdleTimer() {
+    _idleTimer?.cancel();
+  }
+
+  void _resetIdleTimer() {
+    _cancelIdleTimer();
+    if (_isCameraActive) {
+      _idleTimer = Timer(widget.idleTimeout, _stopCamera);
     }
   }
 
@@ -127,12 +144,14 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
       _isCameraActive = true;
     });
     await _controller.start();
+    _resetIdleTimer();
   }
 
   void _stopCamera() async {
     setState(() {
       _isCameraActive = false;
     });
+    _cancelIdleTimer();
     await _controller.stop();
   }
 
@@ -159,6 +178,8 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
       ]);
     }
 
+    _resetIdleTimer();
+
     // Pass data up to the Cart screen
     widget.onBarcodeScanned(rawValue);
   }
@@ -166,6 +187,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _cancelIdleTimer();
     _subscription?.cancel();
     _controller.dispose();
     super.dispose();
@@ -182,22 +204,30 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
           child: SizedBox(
             width: widget.width,
             height: widget.height,
-            child: _isCameraActive
-                ? MobileScanner(
-                    controller: _controller,
-                    fit: BoxFit.cover,
-                    useAppLifecycleState: false,
-                  )
-                : Container(
-                    color: Colors.black87,
-                    child: const Center(
-                      child: Icon(
-                        Icons.qr_code_scanner,
-                        color: Colors.white24,
-                        size: 48,
+            child: Container(
+              color: Colors.black, // Kills the white flash
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _isCameraActive
+                    ? MobileScanner(
+                        key: const ValueKey('scanner'),
+                        controller: _controller,
+                        fit: BoxFit.cover,
+                        useAppLifecycleState: false,
+                      )
+                    : Container(
+                        key: const ValueKey('placeholder'),
+                        color: Colors.black87,
+                        child: const Center(
+                          child: Icon(
+                            Icons.qr_code_scanner,
+                            color: Colors.white24,
+                            size: 48,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+              ),
+            ),
           ),
         ),
 
