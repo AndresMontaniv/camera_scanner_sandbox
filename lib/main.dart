@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
@@ -24,12 +23,6 @@ class MyApp extends StatelessWidget {
 class TestMatrixScreen extends StatelessWidget {
   const TestMatrixScreen({super.key});
 
-  // Our mock hardware reject beep/buzz
-  void _playRejectBuzz(String barcode) {
-    HapticFeedback.heavyImpact();
-    debugPrint('🚨 REJECTED DUPLICATE: $barcode');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,12 +43,11 @@ class TestMatrixScreen extends StatelessWidget {
               final result = await Navigator.push<String>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.singleScan(
-                    scannerViewConfig: const ScannerViewConfig.qrCode(
+                  builder: (_) => const ScannerScreen.singleScan(
+                    toolBarConfig: ToolBarConfig(),
+                    scannerViewConfig: ScannerViewConfig.qrCode(
                       overlayStyle: ScannerOverlayStyle(borderColor: Colors.blue),
                     ),
-                    toolBarConfig: const ToolBarConfig(),
-                    onScanRejected: _playRejectBuzz,
                   ),
                 ),
               );
@@ -69,13 +61,12 @@ class TestMatrixScreen extends StatelessWidget {
               final result = await Navigator.push<String>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.singleScan(
-                    scannerViewConfig: const ScannerViewConfig.barcode(
+                  builder: (_) => const ScannerScreen.singleScan(
+                    toolBarConfig: ToolBarConfig(),
+                    scannerViewConfig: ScannerViewConfig.barcode(
                       overlayStyle: ScannerOverlayStyle(borderColor: Colors.pink),
                       offsetFromCenter: Offset(0, 100),
                     ),
-                    toolBarConfig: const ToolBarConfig(),
-                    onScanRejected: _playRejectBuzz,
                   ),
                 ),
               );
@@ -117,10 +108,9 @@ class TestMatrixScreen extends StatelessWidget {
               final result = await Navigator.push<List<String>>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiScanBatchPop(
-                    scannerViewConfig: const ScannerViewConfig.qrCode(),
-                    toolBarConfig: const ToolBarConfig(),
-                    onScanRejected: _playRejectBuzz,
+                  builder: (_) => const ScannerScreen.multiscan(
+                    toolBarConfig: ToolBarConfig(),
+                    scannerViewConfig: ScannerViewConfig.qrCode(),
                   ),
                 ),
               );
@@ -135,11 +125,10 @@ class TestMatrixScreen extends StatelessWidget {
               final result = await Navigator.push<List<String>>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiScanBatchPop(
-                    scannerViewConfig: const ScannerViewConfig.barcode(),
-                    toolBarConfig: const ToolBarConfig.multiscan(),
+                  builder: (_) => const ScannerScreen.multiscan(
+                    toolBarConfig: ToolBarConfig.multiscan(),
+                    scannerViewConfig: ScannerViewConfig.barcode(),
                     allowDuplicates: false,
-                    onScanRejected: _playRejectBuzz,
                   ),
                 ),
               );
@@ -154,7 +143,7 @@ class TestMatrixScreen extends StatelessWidget {
               final result = await Navigator.push<List<String>>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiScanBatchPop(
+                  builder: (_) => ScannerScreen.multiscan(
                     scannerViewConfig: ScannerViewConfig(
                       scanWindow: Rect.fromCenter(center: screenSize.center(Offset.zero), width: 80, height: 300),
                       overlayStyle: const ScannerOverlayStyle(borderColor: Colors.yellow, borderRadius: 40.0),
@@ -183,13 +172,9 @@ class TestMatrixScreen extends StatelessWidget {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiScanCallbackStream(
+                  builder: (_) => ScannerScreen.multiscan(
                     scannerViewConfig: const ScannerViewConfig.qrCode(),
-                    onDetect: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
-                    onScanSubmitted: () {
-                      // TODO: here play sound
-                      debugPrint('PLAY SOUND!!!');
-                    },
+                    onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
                   ),
                 ),
               );
@@ -203,12 +188,11 @@ class TestMatrixScreen extends StatelessWidget {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiScanCallbackStream(
+                  builder: (_) => ScannerScreen.multiscan(
                     scannerViewConfig: const ScannerViewConfig.barcode(),
                     toolBarConfig: const ToolBarConfig.multiscan(),
                     allowDuplicates: false,
-                    onDetect: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
-                    onScanRejected: _playRejectBuzz,
+                    onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
                   ),
                 ),
               );
@@ -221,9 +205,9 @@ class TestMatrixScreen extends StatelessWidget {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ScannerScreen.multiScanCallbackStream(
+                  builder: (_) => ScannerScreen.multiscan(
                     scannerViewConfig: const ScannerViewConfig(),
-                    onDetect: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
+                    onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
                   ),
                 ),
               );

@@ -3,7 +3,7 @@ part of 'scanner_screen.dart';
 /// Internal routing mode enum — set once by the named constructor and never
 /// changed. The `_ScannerScreenState` switches on this to decide how to
 /// route scanned data (pop a single value, accumulate a batch, or stream).
-enum _ScanMode { single, batchPop, callbackStream }
+enum _ScanMode { single, multiscan }
 
 // ─── Configuration Object: ToolBarConfig ─────────────────────────────
 

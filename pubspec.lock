@@ -136,6 +136,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.2.0"
+  native_haptics_and_audio:
+    dependency: "direct main"
+    description:
+      path: "../../flutter_plugins/native_haptics_and_audio"
+      relative: true
+    source: path
+    version: "1.0.0"
   path:
     dependency: transitive
     description:

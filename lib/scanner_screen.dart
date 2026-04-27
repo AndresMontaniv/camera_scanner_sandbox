@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart' show BarcodeFormat, MobileScannerController, MobileScannerState, TorchState, BarcodeCapture, CameraFacing, DetectionSpeed;
+import 'package:native_haptics_and_audio/native_haptics_and_audio.dart';
+import 'package:mobile_scanner/mobile_scanner.dart'
+    show BarcodeFormat, MobileScannerController, MobileScannerState, TorchState, BarcodeCapture, CameraFacing, DetectionSpeed;
 
 import 'scanner_view.dart';
 import 'scanner_overlay.dart';
@@ -63,11 +65,6 @@ class ScannerScreen extends StatefulWidget {
   /// and allowed barcode formats.
   final ScannerViewConfig? scannerViewConfig;
 
-  /// Fires after every accepted scan in multi-scan modes.  Useful for
-  /// triggering haptic feedback or UI animations without needing the
-  /// scanned value (which is routed through [onCameraScan] or the pop result).
-  final void Function()? onScanSubmitted;
-
   /// Real-time scan callback — the primary data channel for the
   /// [multiScanCallbackStream] constructor.  This is `null` in the other
   /// two modes.
@@ -77,6 +74,8 @@ class ScannerScreen extends StatefulWidget {
   /// and the value already exists in the internal list.  Useful for showing
   /// "already scanned" toasts.
   final void Function(String rejected)? onScanRejected;
+
+  final bool enableSoundAndVibration;
 
   /// Internal flag set by the named constructors.
   final _ScanMode _mode;
@@ -102,79 +101,25 @@ class ScannerScreen extends StatefulWidget {
     this.toolBarConfig,
     this.onScanRejected,
     this.scannerViewConfig,
+    this.enableSoundAndVibration = true,
   }) : _mode = _ScanMode.single,
        onCameraScan = null,
-       onScanSubmitted = null,
        allowDuplicates = false,
        sameItemCooldownMs = 0,
        detectionTimeoutMs = 250;
 
-  /// **Multi-Scan Batch-Pop Mode** — opens the scanner for continuous
-  /// scanning, accumulating results in an internal list.
-  ///
-  /// ### Flow
-  /// 1. Each valid barcode is appended to [scannedItemsNotifier].
-  /// 2. [onScanSubmitted] fires after every accepted scan (if provided).
-  /// 3. When the user taps Close or presses the system back button, the
-  ///    [_isPopping] tripwire fires, hardware shuts down cleanly, and
-  ///    `Navigator.pop<List<String>>(scannedItems)` returns the full batch
-  ///    to the calling screen.
-  ///
-  /// ### Duplicate handling
-  /// * [allowDuplicates] defaults to `true` — the same barcode can appear
-  ///   in the list multiple times.
-  /// * When set to `false`, duplicate values are silently dropped and
-  ///   [onScanRejected] fires (if provided).
-  ///
-  /// Note: [onScanRejected] is only wired when [allowDuplicates] is `false`.
-  /// The inverted boolean in the initializer list (`!allowDuplicates ?
-  /// onScanRejected : null`) ensures we never allocate a rejection callback
-  /// that can never fire.
-  const ScannerScreen.multiScanBatchPop({
+  const ScannerScreen.multiscan({
     super.key,
     this.stackChildren,
     this.toolBarConfig,
-    this.onScanSubmitted,
     this.scannerViewConfig,
+    this.onCameraScan,
     this.allowDuplicates = true,
     this.detectionTimeoutMs = 250,
     this.sameItemCooldownMs = 1500,
+    this.enableSoundAndVibration = true,
     void Function(String)? onScanRejected,
-  }) : _mode = _ScanMode.batchPop,
-       onScanRejected = !allowDuplicates ? onScanRejected : null,
-       onCameraScan = null;
-
-  /// **Multi-Scan Callback-Stream Mode** — opens the scanner for continuous
-  /// scanning, firing [onDetect] for every valid frame.
-  ///
-  /// ### Flow
-  /// 1. Each valid barcode triggers the [onDetect] callback (exposed as
-  ///    [onCameraScan] internally), passing data to the parent in real-time.
-  /// 2. [onScanSubmitted] fires after every accepted scan (if provided).
-  /// 3. On pop, **no data is returned** — the parent already has everything
-  ///    via the callback stream.
-  ///
-  /// ### Duplicate handling
-  /// Same rules as [multiScanBatchPop]: [onScanRejected] is only wired when
-  /// [allowDuplicates] is `false`.
-  ///
-  /// ### Use case
-  /// Ideal for POS terminals, inventory counters, or any flow where the
-  /// parent needs to react to each scan immediately (e.g., playing a sound,
-  /// updating a running total) rather than waiting for the batch on pop.
-  const ScannerScreen.multiScanCallbackStream({
-    super.key,
-    required void Function(String) onDetect,
-    this.stackChildren,
-    this.toolBarConfig,
-    this.onScanSubmitted,
-    this.scannerViewConfig,
-    this.detectionTimeoutMs = 250,
-    this.sameItemCooldownMs = 1500,
-    this.allowDuplicates = true,
-    void Function(String)? onScanRejected,
-  }) : _mode = _ScanMode.callbackStream,
-       onCameraScan = onDetect,
+  }) : _mode = _ScanMode.multiscan,
        onScanRejected = !allowDuplicates ? onScanRejected : null;
 
   @override
@@ -185,6 +130,10 @@ class ScannerScreen extends StatefulWidget {
 
 class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserver {
   late MobileScannerController controller;
+
+  // Reference to your Native Sounds and Vibration plugin
+  final _effects = NativeHapticsAndAudioRepository.instance;
+
   StreamSubscription<BarcodeCapture>? _subscription;
 
   /// Single source of truth for the list of successfully scanned barcode
@@ -237,6 +186,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _effects.initialize();
     controller = MobileScannerController(
       torchEnabled: false,
       facing: CameraFacing.back,
@@ -244,6 +194,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
       detectionTimeoutMs: widget.detectionTimeoutMs,
       formats: _getEffectiveFormats(),
     );
+
     _subscribeToBarcodes();
   }
 
@@ -333,6 +284,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
         // while we're awaiting `controller.stop()` or the exit animation.
         _isPopping = true;
         if (!mounted) return;
+        _playSuccessFeedback();
 
         // Cache the navigator reference BEFORE the async gap.  After
         // `controller.stop()` the widget may already be deactivated, and
@@ -344,35 +296,16 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
         navigator.pop(rawValue);
         break;
 
-      case _ScanMode.batchPop:
-        // ── Duplicate rejection gate ──
-        // When `allowDuplicates` is false, check the single source of truth
-        // (scannedItemsNotifier) for an existing entry.  If found, fire the
-        // optional `onScanRejected` callback so the parent can show a toast
-        // or play an error haptic, then bail — the value never enters the list.
+      case _ScanMode.multiscan:
         if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) {
+          _playRejectedFeedback();
           widget.onScanRejected?.call(rawValue);
           return;
         }
-        // Append to the list by creating a new List instance (required to
-        // trigger ValueNotifier listeners — mutating in place won't notify).
-        scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
-        widget.onScanSubmitted?.call();
-        break;
 
-      case _ScanMode.callbackStream:
-        // ── Duplicate rejection gate (same logic as batchPop) ──
-        if (!widget.allowDuplicates && scannedItemsNotifier.value.contains(rawValue)) {
-          widget.onScanRejected?.call(rawValue);
-          return;
-        }
+        _playSuccessFeedback();
         scannedItemsNotifier.value = List<String>.from([...scannedItemsNotifier.value, rawValue]);
-
-        // Fire the real-time stream callback — this is the primary data
-        // channel in callbackStream mode.  The parent receives every
-        // accepted value immediately, without waiting for pop.
         widget.onCameraScan?.call(rawValue);
-        widget.onScanSubmitted?.call();
         break;
     }
   }
@@ -436,6 +369,22 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
 
     // The user triggered a system back swipe. Intercept it and lock the hardware.
     _popBack();
+  }
+
+  Future<void> _playSuccessFeedback() async {
+    if (!widget.enableSoundAndVibration) return;
+    await Future.wait([
+      _effects.playHaptic(PosHaptic.success),
+      _effects.playSound(PosSound.scannerBeep),
+    ]);
+  }
+
+  Future<void> _playRejectedFeedback() async {
+    if (!widget.enableSoundAndVibration) return;
+    await Future.wait([
+      _effects.playHaptic(PosHaptic.error),
+      _effects.playSound(PosSound.warningBeep),
+    ]);
   }
 
   @override
