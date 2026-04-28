@@ -44,6 +44,7 @@ class _TestingScreenState extends State<TestingScreen> {
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true, // Allows us to control the exact height
+                  showDragHandle: true,
                   backgroundColor: Colors.transparent,
                   builder: (context) => BottomSheetScannerWidget(onBarcodeScanned: _onScanned),
                 );
@@ -51,6 +52,7 @@ class _TestingScreenState extends State<TestingScreen> {
               icon: const Icon(Icons.vertical_align_top),
               label: const Text('Open Bottom Sheet Scanner'),
             ),
+
             const SizedBox(height: 30),
             const Text('Scanned Codes:'),
             Expanded(
@@ -351,7 +353,7 @@ class _BottomSheetScannerWidgetState extends State<BottomSheetScannerWidget> wit
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.5,
+        height: MediaQuery.sizeOf(context).height * 0.9,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -359,41 +361,33 @@ class _BottomSheetScannerWidgetState extends State<BottomSheetScannerWidget> wit
               controller: _controller,
               fit: BoxFit.cover,
               useAppLifecycleState: false,
-            ),
-            LayoutBuilder(
-              builder: (context, constraints) {
+              overlayBuilder: (_, constraints) {
                 const windowWidth = 280.0;
                 const windowHeight = 100.0;
+                final size = constraints.biggest;
                 final scanWindow = Rect.fromCenter(
-                  center: Offset(constraints.maxWidth / 2, constraints.maxHeight / 2),
+                  center: size.center(Offset.zero),
                   width: windowWidth,
                   height: windowHeight,
                 );
                 return ScannerOverlay(
-                  constraints: constraints,
                   scanWindow: scanWindow,
-                  style: const ScannerOverlayStyle(
-                    borderRadius: 12.0,
-                    borderColor: Colors.blue,
-                    borderWidth: 5.0,
-                    opacity: 0.54,
-                    opacityColor: Colors.black,
-                  ),
+                  constraints: constraints,
                 );
               },
             ),
-            Positioned(
-              top: 8,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(color: Colors.white54, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-            ),
+            // Positioned(
+            //   top: 8,
+            //   left: 0,
+            //   right: 0,
+            //   child: Center(
+            //     child: Container(
+            //       width: 40,
+            //       height: 4,
+            //       decoration: BoxDecoration(color: Colors.white54, borderRadius: BorderRadius.circular(2)),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),
