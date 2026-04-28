@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:native_haptics_and_audio/native_haptics_and_audio.dart';
+import 'scanner_overlay.dart';
 
 class TestingScreen extends StatefulWidget {
   const TestingScreen({super.key});
@@ -36,6 +37,19 @@ class _TestingScreenState extends State<TestingScreen> {
             LiveBarcodeScannerWidget(
               height: 100.0,
               onBarcodeScanned: _onScanned,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true, // Allows us to control the exact height
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => BottomSheetScannerWidget(onBarcodeScanned: _onScanned),
+                );
+              },
+              icon: const Icon(Icons.vertical_align_top),
+              label: const Text('Open Bottom Sheet Scanner'),
             ),
             const SizedBox(height: 30),
             const Text('Scanned Codes:'),
@@ -244,6 +258,145 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
           onPressed: _toggleCamera,
         ),
       ],
+    );
+  }
+}
+
+class BottomSheetScannerWidget extends StatefulWidget {
+  final void Function(String barcode) onBarcodeScanned;
+  final int sameItemCooldownMs;
+
+  const BottomSheetScannerWidget({
+    super.key,
+    required this.onBarcodeScanned,
+    this.sameItemCooldownMs = 1500,
+  });
+
+  @override
+  State<BottomSheetScannerWidget> createState() => _BottomSheetScannerWidgetState();
+}
+
+class _BottomSheetScannerWidgetState extends State<BottomSheetScannerWidget> with WidgetsBindingObserver {
+  final MobileScannerController _controller = MobileScannerController(
+    facing: CameraFacing.back,
+    autoStart: false,
+    detectionSpeed: DetectionSpeed.normal,
+  );
+  StreamSubscription<BarcodeCapture>? _subscription;
+
+  String? _lastScannedCode;
+  DateTime? _lastScanTime;
+
+  final _effects = NativeHapticsAndAudioRepository.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _controller.start();
+    _subscription = _controller.barcodes.listen(_onBarcodeDetected);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        _subscription?.pause();
+        _controller.stop();
+        break;
+      case AppLifecycleState.resumed:
+        _controller.start();
+        _subscription?.resume();
+        break;
+    }
+  }
+
+  void _onBarcodeDetected(BarcodeCapture capture) {
+    if (capture.barcodes.isEmpty) return;
+
+    final rawValue = capture.barcodes.first.rawValue;
+    if (rawValue == null) return;
+
+    if (rawValue == _lastScannedCode && _lastScanTime != null) {
+      final elapsed = DateTime.now().difference(_lastScanTime!).inMilliseconds;
+      if (elapsed < widget.sameItemCooldownMs) return;
+    }
+
+    _lastScannedCode = rawValue;
+    _lastScanTime = DateTime.now();
+
+    Future.wait([
+      _effects.playHaptic(PosHaptic.success),
+      _effects.playSound(PosSound.scannerBeep),
+    ]);
+
+    widget.onBarcodeScanned(rawValue);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _subscription?.cancel();
+    _controller
+      ..stop()
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.5,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            MobileScanner(
+              controller: _controller,
+              fit: BoxFit.cover,
+              useAppLifecycleState: false,
+            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const windowWidth = 280.0;
+                const windowHeight = 100.0;
+                final scanWindow = Rect.fromCenter(
+                  center: Offset(constraints.maxWidth / 2, constraints.maxHeight / 2),
+                  width: windowWidth,
+                  height: windowHeight,
+                );
+                return ScannerOverlay(
+                  constraints: constraints,
+                  scanWindow: scanWindow,
+                  style: const ScannerOverlayStyle(
+                    borderRadius: 12.0,
+                    borderColor: Colors.blue,
+                    borderWidth: 5.0,
+                    opacity: 0.54,
+                    opacityColor: Colors.black,
+                  ),
+                );
+              },
+            ),
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.white54, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
