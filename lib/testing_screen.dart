@@ -43,23 +43,40 @@ class _TestingScreenState extends State<TestingScreen> {
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
-                  isScrollControlled: true, // Allows us to control the exact height
-                  showDragHandle: true,
+                  isScrollControlled: true,
                   backgroundColor: Colors.transparent,
-                  builder: (context) => BottomSheetScannerWidget(onBarcodeScanned: _onScanned),
+                  builder: (context) {
+                    return DraggableScrollableSheet(
+                      initialChildSize: 0.30,
+                      minChildSize: 0.30,
+                      maxChildSize: 0.9,
+                      snap: true,
+                      snapSizes: const [0.30, 0.5, 0.9],
+                      builder: (context, scrollController) {
+                        return BottomSheetScannerWidget(
+                          onBarcodeScanned: _onScanned,
+                          scrollController: scrollController,
+                        );
+                      },
+                    );
+                  },
                 );
               },
               icon: const Icon(Icons.vertical_align_top),
-              label: const Text('Open Bottom Sheet Scanner'),
+              label: const Text('Open Draggable Bottom Sheet'),
             ),
 
-            const SizedBox(height: 30),
-            const Text('Scanned Codes:'),
+            const Divider(height: 30),
+            Text('Scanned Codes: ${_scannedItems.length}', style: const TextStyle(fontSize: 25)),
             Expanded(
               child: ListView.builder(
+                padding: const EdgeInsets.all(20.0),
                 itemCount: _scannedItems.length,
                 itemBuilder: (context, index) {
-                  return Text(_scannedItems[index]);
+                  return Text(
+                    _scannedItems[index],
+                    style: const TextStyle(fontSize: 18),
+                  );
                 },
               ),
             ),
@@ -97,6 +114,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
     facing: CameraFacing.back,
     autoStart: false,
     detectionSpeed: DetectionSpeed.normal,
+    initialZoom: 1.5,
   );
   StreamSubscription<BarcodeCapture>? _subscription;
   Timer? _idleTimer;
@@ -111,6 +129,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _effects.initialize();
     _subscription = _controller.barcodes.listen(_onBarcodeDetected);
   }
 
@@ -266,11 +285,13 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
 
 class BottomSheetScannerWidget extends StatefulWidget {
   final void Function(String barcode) onBarcodeScanned;
+  final ScrollController scrollController;
   final int sameItemCooldownMs;
 
   const BottomSheetScannerWidget({
     super.key,
     required this.onBarcodeScanned,
+    required this.scrollController,
     this.sameItemCooldownMs = 1500,
   });
 
@@ -295,6 +316,7 @@ class _BottomSheetScannerWidgetState extends State<BottomSheetScannerWidget> wit
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _effects.initialize();
     _controller.start();
     _subscription = _controller.barcodes.listen(_onBarcodeDetected);
   }
@@ -352,44 +374,54 @@ class _BottomSheetScannerWidgetState extends State<BottomSheetScannerWidget> wit
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.9,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            MobileScanner(
-              controller: _controller,
-              fit: BoxFit.cover,
-              useAppLifecycleState: false,
-              overlayBuilder: (_, constraints) {
-                const windowWidth = 280.0;
-                const windowHeight = 100.0;
-                final size = constraints.biggest;
-                final scanWindow = Rect.fromCenter(
-                  center: size.center(Offset.zero),
-                  width: windowWidth,
-                  height: windowHeight,
-                );
-                return ScannerOverlay(
-                  scanWindow: scanWindow,
-                  constraints: constraints,
-                );
-              },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            controller: widget.scrollController,
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  MobileScanner(
+                    controller: _controller,
+                    fit: BoxFit.cover,
+                    useAppLifecycleState: false,
+                    overlayBuilder: (context, scannerConstraints) {
+                      final size = scannerConstraints.biggest;
+                      final scanWindow = Rect.fromCenter(
+                        center: size.center(Offset.zero),
+                        width: 280.0,
+                        height: 100.0,
+                      );
+                      return ScannerOverlay(
+                        scanWindow: scanWindow,
+                        constraints: scannerConstraints,
+                      );
+                    },
+                  ),
+                  // Floating Drag Handle
+                  Positioned(
+                    top: 8,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white54,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            // Positioned(
-            //   top: 8,
-            //   left: 0,
-            //   right: 0,
-            //   child: Center(
-            //     child: Container(
-            //       width: 40,
-            //       height: 4,
-            //       decoration: BoxDecoration(color: Colors.white54, borderRadius: BorderRadius.circular(2)),
-            //     ),
-            //   ),
-            // ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
