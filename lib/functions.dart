@@ -9,6 +9,8 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
+import 'draggable_scanner_sheet.dart';
+import 'fixed_scanner_sheet.dart';
 
 /// Opens the scanner for a **Single** scan with a custom overlay configuration.
 ///
@@ -321,3 +323,43 @@ Future<void> scanQrCodeStream(
   toolBarConfig: toolBarConfig,
   enableSoundAndVibration: enableSoundAndVibration,
 );
+
+/// Opens a native iOS-style Draggable Bottom Sheet Scanner (30% to 90%).
+Future<void> showDraggableScannerSheet(
+  BuildContext context, {
+  required void Function(String) onBarcodeScanned,
+}) async {
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return DraggableScrollableSheet(
+        initialChildSize: 0.30,
+        minChildSize: 0.30,
+        maxChildSize: 0.9,
+        snap: true,
+        snapSizes: const [0.30, 0.5, 0.9],
+        builder: (context, scrollController) {
+          return DraggableScannerSheet(
+            onBarcodeScanned: onBarcodeScanned,
+            scrollController: scrollController,
+          );
+        },
+      );
+    },
+  );
+}
+
+/// Opens a Fixed-Width (30% height) Bottom Sheet Scanner.
+Future<void> showFixedScannerSheet(
+  BuildContext context, {
+  required void Function(String) onBarcodeScanned,
+}) async {
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => FixedScannerSheet(onBarcodeScanned: onBarcodeScanned),
+  );
+}
