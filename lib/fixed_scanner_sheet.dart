@@ -93,29 +93,29 @@ class _FixedScannerSheetState extends State<FixedScannerSheet> with WidgetsBindi
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final size = Size(screenSize.width, screenSize.height * 0.3);
+    final scanWindow = Rect.fromCenter(
+      center: size.center(Offset.zero),
+      width: 280.0,
+      height: 100.0,
+    );
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * 0.30, // 30% Fixed Height
+        height: size.height,
         child: Stack(
           fit: StackFit.expand,
           children: [
             MobileScanner(
-              controller: _controller,
               fit: BoxFit.cover,
+              scanWindow: scanWindow,
+              controller: _controller,
               useAppLifecycleState: false,
-              overlayBuilder: (context, scannerConstraints) {
-                final size = scannerConstraints.biggest;
-                final scanWindow = Rect.fromCenter(
-                  center: size.center(Offset.zero),
-                  width: 280.0,
-                  height: 100.0,
-                );
-                return ScannerOverlay(
-                  scanWindow: scanWindow,
-                  constraints: scannerConstraints,
-                );
-              },
+              overlayBuilder: (_, scannerConstraints) => ScannerOverlay(
+                scanWindow: scanWindow,
+                constraints: scannerConstraints,
+              ),
             ),
             // Floating Drag Handle
             Positioned(

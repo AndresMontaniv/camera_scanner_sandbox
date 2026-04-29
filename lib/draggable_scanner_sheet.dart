@@ -99,6 +99,12 @@ class _DraggableScannerSheetState extends State<DraggableScannerSheet> with Widg
       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final size = constraints.biggest;
+          final scanWindow = Rect.fromCenter(
+            center: size.center(Offset.zero),
+            width: 280.0,
+            height: 100.0,
+          );
           return SingleChildScrollView(
             controller: widget.scrollController,
             physics: const ClampingScrollPhysics(),
@@ -108,21 +114,14 @@ class _DraggableScannerSheetState extends State<DraggableScannerSheet> with Widg
                 fit: StackFit.expand,
                 children: [
                   MobileScanner(
-                    controller: _controller,
                     fit: BoxFit.cover,
+                    scanWindow: scanWindow,
+                    controller: _controller,
                     useAppLifecycleState: false,
-                    overlayBuilder: (context, scannerConstraints) {
-                      final size = scannerConstraints.biggest;
-                      final scanWindow = Rect.fromCenter(
-                        center: size.center(Offset.zero),
-                        width: 280.0,
-                        height: 100.0,
-                      );
-                      return ScannerOverlay(
-                        scanWindow: scanWindow,
-                        constraints: scannerConstraints,
-                      );
-                    },
+                    overlayBuilder: (_, scannerConstraints) => ScannerOverlay(
+                      scanWindow: scanWindow,
+                      constraints: scannerConstraints,
+                    ),
                   ),
                   // Floating Drag Handle
                   Positioned(
