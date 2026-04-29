@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:native_haptics_and_audio/native_haptics_and_audio.dart';
+import 'functions.dart';
 import 'scanner_overlay.dart';
 
 class TestingScreen extends StatefulWidget {
@@ -38,9 +39,10 @@ class _TestingScreenState extends State<TestingScreen> {
               height: 100.0,
               onBarcodeScanned: _onScanned,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20.0),
             ElevatedButton.icon(
               onPressed: () {
+                // TODO: move this call to `functions.dart`
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
@@ -64,6 +66,28 @@ class _TestingScreenState extends State<TestingScreen> {
               },
               icon: const Icon(Icons.vertical_align_top),
               label: const Text('Open Draggable Bottom Sheet'),
+            ),
+            const SizedBox(height: 20.0),
+            ElevatedButton.icon(
+              onPressed: () {
+                // TODO: move this call to `functions.dart`
+                // it will open the Fixed width scanner bottomsheet
+                // it should have a fixed height of the minimum we need to scan codes so I guess 30%
+              },
+              icon: const Icon(Icons.vertical_shades),
+              label: const Text('Open Fixed Width Bottom Sheet'),
+            ),
+            const SizedBox(height: 20.0),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await scanBarcodeStream(
+                  context,
+                  allowDuplicates: true,
+                  onCameraScan: (barcode) => _onScanned(barcode),
+                );
+              },
+              icon: const Icon(Icons.vertical_shades),
+              label: const Text('Open Full Screen 1D Scanner CallBackStream'),
             ),
 
             const Divider(height: 30),
