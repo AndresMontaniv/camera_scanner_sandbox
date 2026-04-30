@@ -152,6 +152,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
       mainAxisSize: MainAxisSize.min, // Keep it tight
       children: [
         // 1. The Camera Window (Unobstructed)
+        // MARK: - Camera Window
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: SizedBox(
@@ -164,9 +165,10 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
                 child: _isCameraActive
                     ? MobileScanner(
                         key: const ValueKey('scanner'),
-                        controller: _controller,
                         fit: BoxFit.cover,
+                        controller: _controller,
                         useAppLifecycleState: false,
+                        scanWindow: Rect.fromLTWH(0, 0, widget.width, widget.height),
                       )
                     : Container(
                         key: const ValueKey('placeholder'),
