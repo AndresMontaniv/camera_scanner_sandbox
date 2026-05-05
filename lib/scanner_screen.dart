@@ -29,8 +29,8 @@ part 'scanner_top_bar.dart';
 /// |---------------------------------------------|----------------------|---------------------|
 /// | [ScannerScreen.singleScan]                  | `String?`            | No                  |
 /// | [ScannerScreen.multiscan]                   | `List<String>?`      | Optional via [onCameraScan] |
-/// 
-/// Note: [ScannerScreen.multiscan] handles both batch routing (accumulating a list and returning it on pop) 
+///
+/// Note: [ScannerScreen.multiscan] handles both batch routing (accumulating a list and returning it on pop)
 /// and stream routing (firing [onCameraScan] continuously as barcodes are scanned).
 ///
 /// ### Hardware Safety
@@ -111,11 +111,11 @@ class ScannerScreen extends StatefulWidget {
        detectionTimeoutMs = 250;
 
   /// **Multi-Scan Mode** — opens the scanner to read **multiple** barcodes.
-  /// 
+  ///
   /// ### Routing Capabilities
   /// This constructor handles two routing paradigms simultaneously:
-  /// 1. **Batch Routing**: Acts as a shopping cart. Every accepted scan is 
-  ///    added to an internal list, which is returned as `List<String>?` when 
+  /// 1. **Batch Routing**: Acts as a shopping cart. Every accepted scan is
+  ///    added to an internal list, which is returned as `List<String>?` when
   ///    the screen is popped.
   /// 2. **Stream Routing**: If [onCameraScan] is provided, every accepted scan
   ///    fires this callback in real-time.

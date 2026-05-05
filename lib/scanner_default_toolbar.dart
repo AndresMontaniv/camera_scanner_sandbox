@@ -145,6 +145,10 @@ class _DefaultToolBar extends StatelessWidget {
           child: _FlashToggleButton(controller: controller),
         ),
         Visibility(
+          visible: config.showFlashButton,
+          child: _SwitchCameraButton(controller: controller),
+        ),
+        Visibility(
           visible: config.showScannedListButton,
           child: ValueListenableBuilder<List<String>>(
             valueListenable: scannedItemsNotifier,

@@ -11,12 +11,15 @@ class ScannerTopBar extends StatelessWidget {
   // Default Constructor Properties
   final bool showFlashButton;
   final bool showCloseButton;
+  final bool showSwitchCameraButton;
   final MobileScannerController? controller;
   final void Function(Object error)? onFlashButtonError;
 
   // Custom Constructor Properties
   final Widget? leading;
   final List<Widget>? trailing;
+
+  final AlignmentGeometry alignment;
 
   /// The highly opinionated, pre-built top bar.
   /// Includes a close button and an optional flash toggle.
@@ -26,32 +29,32 @@ class ScannerTopBar extends StatelessWidget {
     this.onFlashButtonError,
     this.showFlashButton = true,
     this.showCloseButton = true,
+    this.showSwitchCameraButton = true,
+    this.trailing,
     this.padding = const EdgeInsets.all(16.0),
-  }) : assert(showCloseButton || showFlashButton, assertMsg),
+    this.alignment = Alignment.center,
+  }) : assert(showCloseButton || showFlashButton || showSwitchCameraButton, assertMsg),
        _isCustom = false,
-       leading = null,
-       trailing = null;
+       leading = null;
 
   /// The unopinionated, custom top bar.
   /// Allows passing arbitrary widgets to the leading and trailing edges.
   const ScannerTopBar.custom({
     super.key,
-    this.padding = const EdgeInsets.all(16.0),
     this.leading,
     this.trailing,
+    this.alignment = Alignment.center,
+    this.padding = const EdgeInsets.all(16.0),
   }) : _isCustom = true,
        showFlashButton = false,
        showCloseButton = false,
+       showSwitchCameraButton = false,
        controller = null,
        onFlashButtonError = null;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      top: true,
-      left: true,
-      right: true,
-      bottom: false,
       child: Align(
         alignment: Alignment.topCenter,
         child: Padding(
@@ -63,19 +66,40 @@ class ScannerTopBar extends StatelessWidget {
     );
   }
 
-  /// Extremely fast layout for exactly 2 predictable widgets
   Widget _buildDefaultLayout() {
-    if (!showCloseButton && !showFlashButton) {
+    if (!showCloseButton && !showFlashButton && !showSwitchCameraButton) {
       return const SizedBox.shrink();
     }
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (showCloseButton) const _CircleCloseButton(),
-        if (showFlashButton)
-          _FlashToggleButton(
-            controller: controller,
-            onError: onFlashButtonError,
+        // Default close button
+        Visibility(
+          visible: showCloseButton,
+          child: const _CircleCloseButton(),
+        ),
+        // Default trailing widgets
+        if (showFlashButton || showSwitchCameraButton)
+          Flexible(
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 12.0,
+              runSpacing: 12.0,
+              children: [
+                if (showFlashButton)
+                  _FlashToggleButton(
+                    controller: controller,
+                    onError: onFlashButtonError,
+                  ),
+                if (showSwitchCameraButton)
+                  _SwitchCameraButton(
+                    controller: controller,
+                    onError: onFlashButtonError,
+                  ),
+                ...?trailing,
+              ],
+            ),
           ),
       ],
     );
@@ -205,6 +229,49 @@ class _FlashToggleButton extends StatelessWidget {
               await controller?.toggleTorch();
             } catch (e) {
               debugPrint('Scanner Package: Failed to toggle torch - $e');
+              onError?.call(e);
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
+class _SwitchCameraButton extends StatelessWidget {
+  final MobileScannerController? controller;
+  final void Function(Object error)? onError;
+
+  const _SwitchCameraButton({
+    this.controller,
+    this.onError,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller == null) {
+      return const _DisabledFlashButton();
+    }
+
+    return ValueListenableBuilder<MobileScannerState>(
+      valueListenable: controller!,
+      builder: (_, state, _) {
+        if (!state.isInitialized) {
+          return const IconButton(
+            icon: Icon(Icons.cameraswitch_outlined),
+            onPressed: null,
+          );
+        }
+        final isBack = state.cameraDirection == CameraFacing.back;
+        return _CircleButton(
+          icon: isBack ? Icons.camera_front : Icons.cameraswitch_outlined,
+          iconColor: Colors.white,
+          backgroundColor: Colors.black45,
+          onPressed: () async {
+            try {
+              await controller?.switchCamera();
+            } catch (e) {
+              debugPrint('Scanner Package: Failed to switch camera - $e');
               onError?.call(e);
             }
           },

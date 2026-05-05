@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'functions.dart';
+import 'pos_barcode_scanner_screen.dart';
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
 import 'testing_screen.dart';
@@ -41,7 +42,7 @@ class TestMatrixScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text(
-              '0. Test Screen',
+              'EXPERIMENTAL SCANNERS',
               style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
             ),
           ),
@@ -57,6 +58,19 @@ class TestMatrixScreen extends StatelessWidget {
               );
             },
           ),
+          ListTile(
+            title: const Text('POS with qty buttons'),
+            trailing: const Icon(Icons.add),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PosBarcodeScannerScreen(),
+                ),
+              );
+            },
+          ),
+          const Divider(),
           const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text(
