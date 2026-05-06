@@ -22,6 +22,12 @@ enum _ScanMode { single, multiscan }
 /// If every button flag is `false`, [shouldBuildToolBar] returns `false` and
 /// the toolbar widget is omitted from the tree entirely, saving a layout pass.
 class ToolBarConfig {
+  final EdgeInsetsGeometry padding;
+  final AlignmentGeometry alignment;
+
+  final List<Widget>? trailing;
+  final Widget Function(BuildContext, MobileScannerController)? toolbarBuilder;
+
   /// Master flag — `true` when *all* individual button flags are off.
   final bool _hideToolBar;
 
@@ -31,12 +37,15 @@ class ToolBarConfig {
   /// Whether the close/dismiss button is shown in the toolbar.
   final bool showCloseButton;
 
+  /// Whether the switch camera button is shown in the toolbar.
+  final bool showSwitchCameraButton;
+
   /// Whether the badge-style "scanned items list" button is shown.
   /// Only meaningful in multi-scan modes.
   final bool showScannedListButton;
 
   /// Optional error handler surfaced when the platform torch API throws.
-  final void Function(Object error)? onFlashButtonError;
+  final void Function(Object error)? onActionButtonError;
 
   /// Optional callback fired when the user taps the scanned-list button.
   /// When `null`, the default bottom-sheet list is presented instead.
@@ -44,7 +53,7 @@ class ToolBarConfig {
 
   /// Optional builder that replaces the default scanned-list button widget
   /// entirely, giving full visual control to the caller.
-  final Widget Function(BuildContext, List<String>)? showScannedListBuilder;
+  final Widget Function(BuildContext, List<String>)? listButtonBuilder;
 
   /// Creates a toolbar configuration for **single-scan** or simple layouts.
   ///
@@ -53,29 +62,56 @@ class ToolBarConfig {
   const ToolBarConfig({
     this.showFlashButton = true,
     this.showCloseButton = true,
-    this.onFlashButtonError,
+    this.showSwitchCameraButton = true,
+    this.alignment = Alignment.topCenter,
+    this.padding = const EdgeInsets.all(16.0),
+    this.trailing,
+    this.onActionButtonError,
   }) : showScannedListButton = false,
        onShowScannedListPressed = null,
-       showScannedListBuilder = null,
-       _hideToolBar = !showFlashButton && !showCloseButton;
+       listButtonBuilder = null,
+       toolbarBuilder = null,
+       _hideToolBar = !showFlashButton && !showCloseButton && !showSwitchCameraButton;
 
   /// Creates a toolbar configuration for **multi-scan** layouts.
   ///
   /// Exposes the scanned-list button and its customization hooks alongside
   /// the standard flash and close buttons.
   const ToolBarConfig.multiscan({
+    this.alignment = Alignment.topCenter,
+    this.padding = const EdgeInsets.all(16.0),
     this.showFlashButton = true,
     this.showCloseButton = true,
     this.showScannedListButton = true,
-    this.onFlashButtonError,
+    this.showSwitchCameraButton = true,
+    this.trailing,
+    this.onActionButtonError,
     this.onShowScannedListPressed,
-    this.showScannedListBuilder,
-  }) : _hideToolBar = !showFlashButton && !showCloseButton && !showScannedListButton;
+    this.listButtonBuilder,
+  }) : toolbarBuilder = null,
+       _hideToolBar = !showFlashButton && !showCloseButton && !showScannedListButton;
+
+  const ToolBarConfig.builder({
+    required this.toolbarBuilder,
+    this.alignment = Alignment.topCenter,
+    this.padding = const EdgeInsets.all(16.0),
+  }) : showFlashButton = false,
+       showCloseButton = false,
+       showScannedListButton = false,
+       showSwitchCameraButton = false,
+       trailing = null,
+       onActionButtonError = null,
+       onShowScannedListPressed = null,
+       listButtonBuilder = null,
+       _hideToolBar = false;
 
   ToolBarConfig transformToRegular() => ToolBarConfig(
     showFlashButton: showFlashButton,
     showCloseButton: showCloseButton,
-    onFlashButtonError: onFlashButtonError,
+    onActionButtonError: onActionButtonError,
+    trailing: trailing,
+    alignment: alignment,
+    padding: padding,
   );
 
   /// Returns `true` when at least one button is visible, meaning the toolbar
@@ -90,6 +126,7 @@ extension ToolBarConfigExtension on ToolBarConfig? {
 
   bool get showFlashButton => this == null ? false : this!.showFlashButton;
   bool get showCloseButton => this == null ? false : this!.showCloseButton;
+  bool get showSwitchCameraButton => this == null ? false : this!.showSwitchCameraButton;
   bool get showScannedListButton => this == null ? false : this!.showScannedListButton;
 
   ToolBarConfig? transformToRegular() => this?.transformToRegular();

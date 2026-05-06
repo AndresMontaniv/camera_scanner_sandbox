@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 
 import 'functions.dart';
+import 'option2_screen.dart';
 import 'pos_barcode_scanner_screen.dart';
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
@@ -66,6 +67,18 @@ class TestMatrixScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const PosBarcodeScannerScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('Bottom Navigation Bar'),
+            trailing: const Icon(Icons.menu),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const Option2Screen(),
                 ),
               );
             },
@@ -186,6 +199,28 @@ class TestMatrixScreen extends StatelessWidget {
               await scanBarcodeStream(
                 context,
                 allowDuplicates: false,
+                toolBarConfig: ToolBarConfig.builder(
+                  toolbarBuilder: (_, controller) {
+                    return Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.play_arrow),
+                          onPressed: () {},
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.flashlight_on_outlined),
+                          onPressed: () async {
+                            try {
+                              await controller.toggleTorch();
+                            } catch (e) {
+                              debugPrint('Scanner Package: Failed to toggle torch - $e');
+                            }
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
                 onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
               );
             },

@@ -66,28 +66,24 @@ class _PosBarcodeScannerScreenState extends State<PosBarcodeScannerScreen> {
 
 class _CircleButton extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
-  final Color backgroundColor;
   final VoidCallback? onPressed;
 
   const _CircleButton({
     required this.icon,
-    this.iconColor = Colors.white,
-    this.backgroundColor = Colors.black45,
     this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: backgroundColor,
+      decoration: const BoxDecoration(
+        color: Colors.black45,
         shape: BoxShape.circle,
       ),
       child: IconButton(
         icon: Icon(
           icon,
-          color: iconColor,
+          color: Colors.white,
           size: 28,
         ),
         onPressed: onPressed,

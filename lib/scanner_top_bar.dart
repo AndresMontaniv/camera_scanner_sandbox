@@ -13,10 +13,11 @@ class ScannerTopBar extends StatelessWidget {
   final bool showCloseButton;
   final bool showSwitchCameraButton;
   final MobileScannerController? controller;
-  final void Function(Object error)? onFlashButtonError;
+  final void Function(Object error)? onActionError;
+  final void Function()? popBackWithListResult;
 
   // Custom Constructor Properties
-  final Widget? leading;
+  final Widget? child;
   final List<Widget>? trailing;
 
   final AlignmentGeometry alignment;
@@ -25,42 +26,44 @@ class ScannerTopBar extends StatelessWidget {
   /// Includes a close button and an optional flash toggle.
   const ScannerTopBar({
     super.key,
-    required MobileScannerController this.controller,
-    this.onFlashButtonError,
+    required this.controller,
+    this.onActionError,
     this.showFlashButton = true,
     this.showCloseButton = true,
     this.showSwitchCameraButton = true,
     this.trailing,
+    this.popBackWithListResult,
     this.padding = const EdgeInsets.all(16.0),
-    this.alignment = Alignment.center,
+    this.alignment = Alignment.topCenter,
   }) : assert(showCloseButton || showFlashButton || showSwitchCameraButton, assertMsg),
        _isCustom = false,
-       leading = null;
+       child = null;
 
   /// The unopinionated, custom top bar.
   /// Allows passing arbitrary widgets to the leading and trailing edges.
-  const ScannerTopBar.custom({
+  const ScannerTopBar.builder({
     super.key,
-    this.leading,
-    this.trailing,
-    this.alignment = Alignment.center,
+    this.child,
+    this.controller,
+    this.alignment = Alignment.topCenter,
     this.padding = const EdgeInsets.all(16.0),
   }) : _isCustom = true,
+       trailing = null,
+       popBackWithListResult = null,
        showFlashButton = false,
        showCloseButton = false,
        showSwitchCameraButton = false,
-       controller = null,
-       onFlashButtonError = null;
+       onActionError = null;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Align(
-        alignment: Alignment.topCenter,
+        alignment: alignment,
         child: Padding(
           padding: padding,
           // Route to the highly-optimized default, or the flexible custom layout
-          child: _isCustom ? _buildCustomLayout() : _buildDefaultLayout(),
+          child: _isCustom ? child : _buildDefaultLayout(),
         ),
       ),
     );
@@ -77,7 +80,7 @@ class ScannerTopBar extends StatelessWidget {
         // Default close button
         Visibility(
           visible: showCloseButton,
-          child: const _CircleCloseButton(),
+          child: _CircleCloseButton(pop: popBackWithListResult),
         ),
         // Default trailing widgets
         if (showFlashButton || showSwitchCameraButton)
@@ -90,35 +93,15 @@ class ScannerTopBar extends StatelessWidget {
                 if (showFlashButton)
                   _FlashToggleButton(
                     controller: controller,
-                    onError: onFlashButtonError,
+                    onError: onActionError,
                   ),
                 if (showSwitchCameraButton)
                   _SwitchCameraButton(
                     controller: controller,
-                    onError: onFlashButtonError,
+                    onError: onActionError,
                   ),
                 ...?trailing,
               ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  /// Flexible layout that prevents overflow crashes with multiple trailing widgets
-  Widget _buildCustomLayout() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        leading ?? const SizedBox.shrink(),
-        if (trailing != null && trailing!.isNotEmpty)
-          Flexible(
-            child: Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 12.0,
-              runSpacing: 12.0,
-              children: trailing!,
             ),
           ),
       ],
@@ -186,14 +169,18 @@ class _CircleCloseButton extends StatelessWidget {
 }
 
 class _DisabledFlashButton extends StatelessWidget {
-  const _DisabledFlashButton();
+  final IconData icon;
+  const _DisabledFlashButton({required this.icon});
+  const _DisabledFlashButton.flash() : icon = Icons.flash_off;
+  const _DisabledFlashButton.camera() : icon = Icons.camera_alt_outlined;
 
   @override
   Widget build(BuildContext context) {
-    return const _CircleButton(
-      icon: Icons.flash_off,
+    return _CircleButton(
+      icon: icon,
       iconColor: Colors.white24,
       backgroundColor: Colors.black26,
+      onPressed: null,
     );
   }
 }
@@ -202,22 +189,20 @@ class _FlashToggleButton extends StatelessWidget {
   final MobileScannerController? controller;
   final void Function(Object error)? onError;
 
-  const _FlashToggleButton({
-    this.controller,
-    this.onError,
-  });
+  const _FlashToggleButton({this.controller, this.onError});
 
   @override
   Widget build(BuildContext context) {
+    const disableButton = _DisabledFlashButton.flash();
     if (controller == null) {
-      return const _DisabledFlashButton();
+      return disableButton;
     }
 
     return ValueListenableBuilder<MobileScannerState>(
       valueListenable: controller!,
       builder: (_, state, _) {
         if (state.torchState == TorchState.unavailable) {
-          return const _DisabledFlashButton();
+          return disableButton;
         }
         final isOn = state.torchState == TorchState.on;
         return _CircleButton(
@@ -242,25 +227,19 @@ class _SwitchCameraButton extends StatelessWidget {
   final MobileScannerController? controller;
   final void Function(Object error)? onError;
 
-  const _SwitchCameraButton({
-    this.controller,
-    this.onError,
-  });
+  const _SwitchCameraButton({this.controller, this.onError});
 
   @override
   Widget build(BuildContext context) {
+    const disableButton = _DisabledFlashButton.camera();
     if (controller == null) {
-      return const _DisabledFlashButton();
+      return disableButton;
     }
-
     return ValueListenableBuilder<MobileScannerState>(
       valueListenable: controller!,
       builder: (_, state, _) {
         if (!state.isInitialized) {
-          return const IconButton(
-            icon: Icon(Icons.cameraswitch_outlined),
-            onPressed: null,
-          );
+          return disableButton;
         }
         final isBack = state.cameraDirection == CameraFacing.back;
         return _CircleButton(

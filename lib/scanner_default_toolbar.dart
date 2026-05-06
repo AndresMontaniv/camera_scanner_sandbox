@@ -37,8 +37,8 @@ const List<BarcodeFormat> _horizontal1DFormats = [
 /// * **Scanned list badge** (trailing) — shows the count of scanned items;
 ///   tapping it opens a bottom sheet (or fires the caller's custom handler).
 class _DefaultToolBar extends StatelessWidget {
-  final ToolBarConfig? config;
-  final MobileScannerController? controller;
+  final ToolBarConfig config;
+  final MobileScannerController controller;
   final ValueNotifier<List<String>> scannedItemsNotifier;
   final void Function()? popBackWithListResult;
 
@@ -136,24 +136,30 @@ class _DefaultToolBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onShowScannedListPressed = config?.onShowScannedListPressed;
-    return ScannerTopBar.custom(
-      leading: config.showCloseButton ? _CircleCloseButton(pop: popBackWithListResult) : null,
+    final onShowScannedListPressed = config.onShowScannedListPressed;
+    if (config.toolbarBuilder != null) {
+      return ScannerTopBar.builder(
+        padding: config.padding,
+        alignment: config.alignment,
+        child: config.toolbarBuilder!.call(context, controller),
+      );
+    }
+    return ScannerTopBar(
+      controller: controller,
+      padding: config.padding,
+      alignment: config.alignment,
+      showCloseButton: config.showCloseButton,
+      showFlashButton: config.showFlashButton,
+      showSwitchCameraButton: config.showSwitchCameraButton,
+      onActionError: config.onActionButtonError,
+      popBackWithListResult: popBackWithListResult,
       trailing: [
-        Visibility(
-          visible: config.showFlashButton,
-          child: _FlashToggleButton(controller: controller),
-        ),
-        Visibility(
-          visible: config.showFlashButton,
-          child: _SwitchCameraButton(controller: controller),
-        ),
         Visibility(
           visible: config.showScannedListButton,
           child: ValueListenableBuilder<List<String>>(
             valueListenable: scannedItemsNotifier,
             builder: (ctx, scannedItems, _) {
-              final showScannedListBuilder = config?.showScannedListBuilder;
+              final showScannedListBuilder = config.listButtonBuilder;
               // If the caller supplied a fully custom builder, hand off to it.
               if (showScannedListBuilder != null) {
                 return showScannedListBuilder.call(ctx, scannedItems);

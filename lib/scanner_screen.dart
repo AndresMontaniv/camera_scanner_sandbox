@@ -411,10 +411,12 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     // Assemble the overlay stack: toolbar first (if configured), then any
     // caller-supplied children layered on top.
-    final toolBarConfig = widget._mode == _ScanMode.single ? widget.toolBarConfig?.transformToRegular() : widget.toolBarConfig;
+    final toolBarConfig = widget._mode == _ScanMode.single && widget.toolBarConfig?.toolbarBuilder == null
+        ? widget.toolBarConfig?.transformToRegular()
+        : widget.toolBarConfig;
 
     final List<Widget> stackChildren = [
-      if (toolBarConfig?.shouldBuildToolBar ?? false)
+      if (toolBarConfig != null && toolBarConfig.shouldBuildToolBar)
         _DefaultToolBar(
           config: toolBarConfig,
           controller: controller,
