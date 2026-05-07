@@ -56,7 +56,7 @@ class StandardToolBar extends ScannerToolBar {
   const StandardToolBar({
     this.showCloseButton = true,
     this.showFlashButton = true,
-    this.showSwitchCameraButton = false,
+    this.showSwitchCameraButton = true,
     this.trailing,
     this.onActionButtonError,
     super.alignment,

@@ -33,6 +33,10 @@ class MyApp extends StatelessWidget {
 class TestMatrixScreen extends StatelessWidget {
   const TestMatrixScreen({super.key});
 
+  void _showResult(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,7 +69,13 @@ class TestMatrixScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const PosBarcodeScannerScreen(),
+                  builder: (context) => PosBarcodeScannerScreen(
+                    onScan: (barcode, qty) {
+                      debugPrint('This barcode x times: $barcode x $qty');
+                      if (!context.mounted) return;
+                      _showResult(context, 'This barcode x times: $barcode x $qty');
+                    },
+                  ),
                 ),
               );
             },
@@ -87,6 +97,8 @@ class TestMatrixScreen extends StatelessWidget {
                 overlayStyle: const ScannerOverlayStyle(borderColor: Colors.blue),
               );
               debugPrint('✅ Single QR Result: $result');
+              if (!context.mounted) return;
+              _showResult(context, 'Single QR: $result');
             },
           ),
           ListTile(
@@ -99,6 +111,8 @@ class TestMatrixScreen extends StatelessWidget {
                 offsetFromCenter: const Offset(0, 100),
               );
               debugPrint('✅ Single Barcode Result: $result');
+              if (!context.mounted) return;
+              _showResult(context, 'Single Barcode: $result');
             },
           ),
           ListTile(
@@ -113,6 +127,8 @@ class TestMatrixScreen extends StatelessWidget {
                 ),
               );
               debugPrint('✅ Single Custom Result: $result');
+              if (!context.mounted) return;
+              _showResult(context, 'Single Custom: $result');
             },
           ),
 
@@ -174,7 +190,10 @@ class TestMatrixScreen extends StatelessWidget {
             onTap: () async {
               await scanQrCodeStream(
                 context,
-                onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
+                onCameraScan: (qrCode) {
+                  debugPrint('🌊 STREAM DETECTED: $qrCode');
+                  _showResult(context, 'Stream QR: $qrCode');
+                },
               );
             },
           ),
@@ -186,7 +205,10 @@ class TestMatrixScreen extends StatelessWidget {
               await scanBarcodeStream(
                 context,
                 allowDuplicates: false,
-                onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
+                onCameraScan: (barcode) {
+                  debugPrint('🌊 STREAM DETECTED: $barcode');
+                  _showResult(context, 'Stream Barcode: $barcode');
+                },
               );
             },
           ),
@@ -196,7 +218,10 @@ class TestMatrixScreen extends StatelessWidget {
             onTap: () async {
               await scanCustomStream(
                 context,
-                onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
+                onCameraScan: (barcode) {
+                  debugPrint('🌊 STREAM DETECTED: $barcode');
+                  _showResult(context, 'Stream Custom: $barcode');
+                },
               );
             },
           ),

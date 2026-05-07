@@ -1,10 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
 
 class PosBarcodeScannerScreen extends StatefulWidget {
-  const PosBarcodeScannerScreen({super.key});
+  final void Function(String barcode, int qty) onScan;
+  final List<BarcodeFormat> allowedFormats;
+  final int detectionTimeoutMs;
+  final int sameItemCooldownMs;
+  final bool enableSoundAndVibration;
+  final Offset? offsetFromCenter;
+  final ScannerOverlayStyle? overlayStyle;
+
+  const PosBarcodeScannerScreen({
+    super.key,
+    required this.onScan,
+    this.allowedFormats = const <BarcodeFormat>[],
+    this.detectionTimeoutMs = 250,
+    this.sameItemCooldownMs = 1500,
+    this.enableSoundAndVibration = true,
+    this.offsetFromCenter,
+    this.overlayStyle,
+  });
 
   @override
   State<PosBarcodeScannerScreen> createState() => _PosBarcodeScannerScreenState();
@@ -16,20 +34,25 @@ class _PosBarcodeScannerScreenState extends State<PosBarcodeScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return ScannerScreen.multiscan(
-      scannerViewConfig: const ScannerViewConfig.barcode(
-        overlayStyle: ScannerOverlayStyle(borderColor: Colors.blue),
+      toolBar: const BatchToolBar(),
+      allowDuplicates: true,
+      detectionTimeoutMs: widget.detectionTimeoutMs,
+      sameItemCooldownMs: widget.sameItemCooldownMs,
+      enableSoundAndVibration: widget.enableSoundAndVibration,
+      scannerViewConfig: ScannerViewConfig.barcode(
+        overlayStyle: widget.overlayStyle ?? const ScannerOverlayStyle(borderColor: Colors.blue),
+        offsetFromCenter: widget.offsetFromCenter,
+        allowedFormats: widget.allowedFormats,
       ),
       onCameraScan: (barcode) {
-        // barcode scan result
-        print('Barcode: $barcode');
         final qty = qtyNotifier.value;
-        // Here we can call the new method for now just a print
-        // later we will call `widget.onScan(barcode, qty)`
-        print('This barcode x times: $barcode x $qty');
+        widget.onScan(barcode, qty);
+        // After scan reset qty to 1
+        qtyNotifier.value = 1;
       },
       stackChildren: [
         Positioned(
-          top: MediaQuery.of(context).padding.top + 20,
+          bottom: MediaQuery.of(context).padding.bottom + 100,
           left: 0,
           right: 0,
           child: ValueListenableBuilder<int>(
@@ -77,14 +100,14 @@ class _CircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        color: Colors.black45,
+        color: Colors.white54,
         shape: BoxShape.circle,
       ),
       child: IconButton(
         icon: Icon(
           icon,
           color: Colors.white,
-          size: 28,
+          size: 35,
         ),
         onPressed: onPressed,
       ),
