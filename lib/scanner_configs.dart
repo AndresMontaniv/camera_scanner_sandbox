@@ -1,136 +1,118 @@
 part of 'scanner_screen.dart';
 
+// MARK: - Constants Values
+
+// ─── Layout Constants ───────────────────────────────────────────────────────
+// Default vertical offsets that nudge the scan-window overlay upward from the
+// screen center, accounting for visual balance with the toolbar at the top.
+const Offset _qrOffset = Offset(0.0, -50.0);
+const Offset _barcodeOffset = Offset(0.0, -80.0);
+
+// ─── Barcode Format Allow-List ──────────────────────────────────────────────
+/// The canonical set of horizontal 1D barcode symbologies commonly found on
+/// retail and warehouse products.  Used as the default format list when the
+/// caller selects [ScannerViewConfig.barcode] without specifying a custom
+/// subset.  Keeping this explicit (instead of an empty list which means
+/// "accept all") prevents the controller from wasting decode cycles on 2D
+/// matrix codes when the overlay is clearly a horizontal strip.
+const List<BarcodeFormat> _horizontal1DFormats = [
+  BarcodeFormat.code128,
+  BarcodeFormat.code39,
+  BarcodeFormat.code93,
+  BarcodeFormat.ean13,
+  BarcodeFormat.ean8,
+  BarcodeFormat.upcA,
+  BarcodeFormat.upcE,
+  BarcodeFormat.itf14,
+  BarcodeFormat.codabar,
+];
+
+// MARK: - ToolBar classes
+
 /// Internal routing mode enum — set once by the named constructor and never
 /// changed. The `_ScannerScreenState` switches on this to decide how to
 /// route scanned data (pop a single value, accumulate a batch, or stream).
 enum _ScanMode { single, multiscan }
 
-// ─── Configuration Object: ToolBarConfig ─────────────────────────────
-
-/// **Configuration Object Pattern** — encapsulates every toolbar-related
-/// parameter into a single object so the main [ScannerScreen] constructors
-/// stay clean and free of parameter bloat.
-///
-/// Two factory shapes are provided:
-///
-/// * **[ToolBarConfig.new]** — for single-scan or simple multi-scan
-///   scenarios where only the flash and close buttons are relevant.
-/// * **[ToolBarConfig.multiscan]** — additionally exposes the
-///   "scanned list" button, its builder, and its tap callback, which only
-///   make sense when the scanner accumulates multiple items.
-///
-/// If every button flag is `false`, [shouldBuildToolBar] returns `false` and
-/// the toolbar widget is omitted from the tree entirely, saving a layout pass.
-class ToolBarConfig {
+sealed class ScannerToolBar {
   final EdgeInsetsGeometry padding;
   final AlignmentGeometry alignment;
 
-  final List<Widget>? trailing;
-  final Widget Function(BuildContext, MobileScannerController)? toolbarBuilder;
+  const ScannerToolBar({
+    this.alignment = Alignment.topCenter,
+    this.padding = const EdgeInsets.all(16.0),
+  });
 
-  /// Master flag — `true` when *all* individual button flags are off.
-  final bool _hideToolBar;
+  bool get shouldBuild;
+}
 
-  /// Whether the flash/torch toggle button is shown in the toolbar.
+class StandardToolBar extends ScannerToolBar {
   final bool showFlashButton;
-
-  /// Whether the close/dismiss button is shown in the toolbar.
   final bool showCloseButton;
-
-  /// Whether the switch camera button is shown in the toolbar.
   final bool showSwitchCameraButton;
-
-  /// Whether the badge-style "scanned items list" button is shown.
-  /// Only meaningful in multi-scan modes.
-  final bool showScannedListButton;
-
-  /// Optional error handler surfaced when the platform torch API throws.
+  final List<Widget>? trailing;
   final void Function(Object error)? onActionButtonError;
 
-  /// Optional callback fired when the user taps the scanned-list button.
-  /// When `null`, the default bottom-sheet list is presented instead.
-  final void Function(BuildContext, List<String>)? onShowScannedListPressed;
+  const StandardToolBar({
+    this.showCloseButton = true,
+    this.showFlashButton = true,
+    this.showSwitchCameraButton = false,
+    this.trailing,
+    this.onActionButtonError,
+    super.alignment,
+    super.padding,
+  });
 
-  /// Optional builder that replaces the default scanned-list button widget
-  /// entirely, giving full visual control to the caller.
+  @override
+  bool get shouldBuild => showFlashButton || showCloseButton || showSwitchCameraButton;
+}
+
+class BatchToolBar extends StandardToolBar {
+  final bool showScannedListButton;
+  final void Function(BuildContext, List<String>)? onShowScannedListPressed;
   final Widget Function(BuildContext, List<String>)? listButtonBuilder;
 
-  /// Creates a toolbar configuration for **single-scan** or simple layouts.
-  ///
-  /// The scanned-list button is always hidden in this variant because there
-  /// is no internal list to display.
-  const ToolBarConfig({
-    this.showFlashButton = true,
-    this.showCloseButton = true,
-    this.showSwitchCameraButton = true,
-    this.alignment = Alignment.topCenter,
-    this.padding = const EdgeInsets.all(16.0),
-    this.trailing,
-    this.onActionButtonError,
-  }) : showScannedListButton = false,
-       onShowScannedListPressed = null,
-       listButtonBuilder = null,
-       toolbarBuilder = null,
-       _hideToolBar = !showFlashButton && !showCloseButton && !showSwitchCameraButton;
-
-  /// Creates a toolbar configuration for **multi-scan** layouts.
-  ///
-  /// Exposes the scanned-list button and its customization hooks alongside
-  /// the standard flash and close buttons.
-  const ToolBarConfig.multiscan({
-    this.alignment = Alignment.topCenter,
-    this.padding = const EdgeInsets.all(16.0),
-    this.showFlashButton = true,
-    this.showCloseButton = true,
+  const BatchToolBar({
     this.showScannedListButton = true,
-    this.showSwitchCameraButton = true,
-    this.trailing,
-    this.onActionButtonError,
     this.onShowScannedListPressed,
     this.listButtonBuilder,
-  }) : toolbarBuilder = null,
-       _hideToolBar = !showFlashButton && !showCloseButton && !showScannedListButton;
+    super.showFlashButton,
+    super.showCloseButton,
+    super.showSwitchCameraButton,
+    super.trailing,
+    super.onActionButtonError,
+    super.alignment,
+    super.padding,
+  });
 
-  const ToolBarConfig.builder({
-    required this.toolbarBuilder,
-    this.alignment = Alignment.topCenter,
-    this.padding = const EdgeInsets.all(16.0),
-  }) : showFlashButton = false,
-       showCloseButton = false,
-       showScannedListButton = false,
-       showSwitchCameraButton = false,
-       trailing = null,
-       onActionButtonError = null,
-       onShowScannedListPressed = null,
-       listButtonBuilder = null,
-       _hideToolBar = false;
+  @override
+  bool get shouldBuild => showFlashButton || showCloseButton || showSwitchCameraButton || showScannedListButton;
 
-  ToolBarConfig transformToRegular() => ToolBarConfig(
+  StandardToolBar toStandard() => StandardToolBar(
     showFlashButton: showFlashButton,
     showCloseButton: showCloseButton,
-    onActionButtonError: onActionButtonError,
+    showSwitchCameraButton: showSwitchCameraButton,
     trailing: trailing,
+    onActionButtonError: onActionButtonError,
     alignment: alignment,
     padding: padding,
   );
-
-  /// Returns `true` when at least one button is visible, meaning the toolbar
-  /// widget should be inserted into the overlay stack.
-  bool get shouldBuildToolBar => !_hideToolBar;
 }
 
-/// Null-safe convenience extension so callers can query toolbar flags directly
-/// on a nullable [DefaultToolBarConfig?] without verbose null-checks.
-extension ToolBarConfigExtension on ToolBarConfig? {
-  bool get shouldBuildToolBar => this == null ? false : this!.shouldBuildToolBar;
+class CustomToolBar extends ScannerToolBar {
+  final Widget Function(BuildContext, MobileScannerController?) toolbarBuilder;
 
-  bool get showFlashButton => this == null ? false : this!.showFlashButton;
-  bool get showCloseButton => this == null ? false : this!.showCloseButton;
-  bool get showSwitchCameraButton => this == null ? false : this!.showSwitchCameraButton;
-  bool get showScannedListButton => this == null ? false : this!.showScannedListButton;
+  const CustomToolBar({
+    required this.toolbarBuilder,
+    super.alignment,
+    super.padding,
+  });
 
-  ToolBarConfig? transformToRegular() => this?.transformToRegular();
+  @override
+  bool get shouldBuild => true;
 }
+
+// MARK: - ScannerView class
 
 // ─── Configuration Object: ScannerViewConfig ────────────────────────────────
 

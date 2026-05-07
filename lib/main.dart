@@ -162,7 +162,7 @@ class TestMatrixScreen extends StatelessWidget {
               final screenSize = MediaQuery.sizeOf(context);
               final result = await scanCustomBatch(
                 context,
-                toolBarConfig: const ToolBarConfig.multiscan(),
+                toolBar: const BatchToolBar(),
                 scannerViewConfig: ScannerViewConfig(
                   scanWindow: Rect.fromCenter(center: screenSize.center(Offset.zero), width: 80, height: 300),
                   overlayStyle: const ScannerOverlayStyle(borderColor: Colors.yellow, borderRadius: 40.0),
@@ -199,28 +199,6 @@ class TestMatrixScreen extends StatelessWidget {
               await scanBarcodeStream(
                 context,
                 allowDuplicates: false,
-                toolBarConfig: ToolBarConfig.builder(
-                  toolbarBuilder: (_, controller) {
-                    return Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.play_arrow),
-                          onPressed: () {},
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.flashlight_on_outlined),
-                          onPressed: () async {
-                            try {
-                              await controller.toggleTorch();
-                            } catch (e) {
-                              debugPrint('Scanner Package: Failed to toggle torch - $e');
-                            }
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                ),
                 onCameraScan: (barcode) => debugPrint('🌊 STREAM DETECTED: $barcode'),
               );
             },

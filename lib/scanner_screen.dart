@@ -9,7 +9,6 @@ import 'scanner_view.dart';
 import 'scanner_overlay.dart';
 
 part 'scanner_configs.dart';
-part 'scanner_default_toolbar.dart';
 part 'scanner_top_bar.dart';
 
 // ─── ScannerScreen ──────────────────────────────────────────────────────────
@@ -61,7 +60,7 @@ class ScannerScreen extends StatefulWidget {
 
   /// Toolbar configuration object.  Pass `null` or omit to hide the toolbar
   /// entirely.
-  final ToolBarConfig? toolBarConfig;
+  final ScannerToolBar? toolBar;
 
   /// Visual/hardware configuration object that determines the overlay shape
   /// and allowed barcode formats.
@@ -100,7 +99,7 @@ class ScannerScreen extends StatefulWidget {
   const ScannerScreen.singleScan({
     super.key,
     this.stackChildren,
-    this.toolBarConfig,
+    this.toolBar,
     this.onScanRejected,
     this.scannerViewConfig,
     this.enableSoundAndVibration = true,
@@ -108,7 +107,8 @@ class ScannerScreen extends StatefulWidget {
        onCameraScan = null,
        allowDuplicates = false,
        sameItemCooldownMs = 0,
-       detectionTimeoutMs = 250;
+       detectionTimeoutMs = 250,
+       assert(toolBar is! BatchToolBar);
 
   /// **Multi-Scan Mode** — opens the scanner to read **multiple** barcodes.
   ///
@@ -122,7 +122,7 @@ class ScannerScreen extends StatefulWidget {
   const ScannerScreen.multiscan({
     super.key,
     this.stackChildren,
-    this.toolBarConfig,
+    this.toolBar,
     this.scannerViewConfig,
     this.onCameraScan,
     this.allowDuplicates = true,
@@ -398,6 +398,34 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
     ]);
   }
 
+  // TODO: Gemini should doble check
+  Widget? _buildToolBarUI() {
+    final toolbar = widget.toolBar;
+    if (toolbar == null || !toolbar.shouldBuild) return null;
+    if (toolbar is BatchToolBar) {
+      if (widget._mode == _ScanMode.single) {
+        debugPrint('Switching ToolBar to `StandardToolBar` for Single Scan');
+        return ScannerTopBar(
+          toolBar: toolbar.toStandard(),
+          controller: controller,
+          popBackWithListResult: _popBack,
+        );
+      } else {
+        return ScannerBatchTopBar(
+          toolBar: toolbar,
+          controller: controller,
+          popBackWithListResult: _popBack,
+          scannedItemsNotifier: scannedItemsNotifier,
+        );
+      }
+    }
+    return ScannerTopBar(
+      toolBar: toolbar,
+      controller: controller,
+      popBackWithListResult: _popBack,
+    );
+  }
+
   @override
   void dispose() {
     scannedItemsNotifier.dispose();
@@ -411,18 +439,10 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     // Assemble the overlay stack: toolbar first (if configured), then any
     // caller-supplied children layered on top.
-    final toolBarConfig = widget._mode == _ScanMode.single && widget.toolBarConfig?.toolbarBuilder == null
-        ? widget.toolBarConfig?.transformToRegular()
-        : widget.toolBarConfig;
+    final toolBar = _buildToolBarUI();
 
     final List<Widget> stackChildren = [
-      if (toolBarConfig != null && toolBarConfig.shouldBuildToolBar)
-        _DefaultToolBar(
-          config: toolBarConfig,
-          controller: controller,
-          popBackWithListResult: _popBack,
-          scannedItemsNotifier: scannedItemsNotifier,
-        ),
+      ?toolBar,
       ...?widget.stackChildren,
     ];
 

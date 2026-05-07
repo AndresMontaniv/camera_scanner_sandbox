@@ -19,7 +19,7 @@ import 'fixed_scanner_sheet.dart';
 Future<String?> scanCustom(
   BuildContext context, {
   List<Widget>? stackChildren,
-  ToolBarConfig? toolBarConfig,
+  ScannerToolBar? toolBar,
   void Function(String)? onScanRejected,
   ScannerViewConfig? scannerViewConfig,
   bool enableSoundAndVibration = true,
@@ -32,7 +32,7 @@ Future<String?> scanCustom(
         ).push(
           MaterialPageRoute(
             builder: (_) => ScannerScreen.singleScan(
-              toolBarConfig: toolBarConfig,
+              toolBar: toolBar,
               stackChildren: stackChildren,
               onScanRejected: onScanRejected,
               scannerViewConfig: scannerViewConfig,
@@ -62,12 +62,13 @@ Future<String?> scanBarcode(
   void Function(String)? onScanRejected,
   ScannerOverlayStyle? overlayStyle,
   Offset? offsetFromCenter,
-  ToolBarConfig? toolBarConfig = const ToolBarConfig(),
+  ScannerToolBar? toolBar = const StandardToolBar(),
   List<BarcodeFormat> allowedFormats = const [],
   bool enableSoundAndVibration = true,
 }) async {
   return scanCustom(
     context,
+    toolBar: toolBar,
     stackChildren: stackChildren,
     onScanRejected: onScanRejected,
     scannerViewConfig: ScannerViewConfig.barcode(
@@ -75,7 +76,6 @@ Future<String?> scanBarcode(
       offsetFromCenter: offsetFromCenter,
       allowedFormats: allowedFormats,
     ),
-    toolBarConfig: toolBarConfig,
     enableSoundAndVibration: enableSoundAndVibration,
   );
 }
@@ -90,18 +90,18 @@ Future<String?> scanQrCode(
   void Function(String)? onScanRejected,
   ScannerOverlayStyle? overlayStyle,
   Offset? offsetFromCenter,
-  ToolBarConfig? toolBarConfig = const ToolBarConfig(),
+  ScannerToolBar? toolBar = const StandardToolBar(),
   bool enableSoundAndVibration = true,
 }) async {
   return scanCustom(
     context,
+    toolBar: toolBar,
     stackChildren: stackChildren,
     onScanRejected: onScanRejected,
     scannerViewConfig: ScannerViewConfig.qrCode(
       overlayStyle: overlayStyle,
       offsetFromCenter: offsetFromCenter,
     ),
-    toolBarConfig: toolBarConfig,
     enableSoundAndVibration: enableSoundAndVibration,
   );
 }
@@ -113,7 +113,7 @@ Future<String?> scanQrCode(
 Future<List<String>?> scanCustomBatch(
   BuildContext context, {
   List<Widget>? stackChildren,
-  ToolBarConfig? toolBarConfig,
+  ScannerToolBar? toolBar,
   ScannerViewConfig? scannerViewConfig,
   bool allowDuplicates = true,
   int detectionTimeoutMs = 250,
@@ -129,7 +129,7 @@ Future<List<String>?> scanCustomBatch(
         ).push(
           MaterialPageRoute(
             builder: (_) => ScannerScreen.multiscan(
-              toolBarConfig: toolBarConfig,
+              toolBar: toolBar,
               stackChildren: stackChildren,
               onScanRejected: onScanRejected,
               allowDuplicates: allowDuplicates,
@@ -159,7 +159,7 @@ Future<List<String>?> scanCustomBatch(
 Future<List<String>?> scanBarcodeBatch(
   BuildContext context, {
   List<Widget>? stackChildren,
-  ToolBarConfig? toolBarConfig = const ToolBarConfig.multiscan(),
+  ScannerToolBar? toolBar = const BatchToolBar(),
   bool allowDuplicates = true,
   int detectionTimeoutMs = 250,
   int sameItemCooldownMs = 1500,
@@ -176,12 +176,12 @@ Future<List<String>?> scanBarcodeBatch(
     detectionTimeoutMs: detectionTimeoutMs,
     sameItemCooldownMs: sameItemCooldownMs,
     onScanRejected: onScanRejected,
+    toolBar: toolBar,
     scannerViewConfig: ScannerViewConfig.barcode(
       overlayStyle: overlayStyle,
       offsetFromCenter: offsetFromCenter,
       allowedFormats: allowedFormats,
     ),
-    toolBarConfig: toolBarConfig,
     enableSoundAndVibration: enableSoundAndVibration,
   );
 }
@@ -193,7 +193,7 @@ Future<List<String>?> scanBarcodeBatch(
 Future<List<String>?> scanQrCodeBatch(
   BuildContext context, {
   List<Widget>? stackChildren,
-  ToolBarConfig? toolBarConfig = const ToolBarConfig.multiscan(),
+  ScannerToolBar? toolBar = const BatchToolBar(),
   bool allowDuplicates = true,
   int detectionTimeoutMs = 250,
   int sameItemCooldownMs = 1500,
@@ -209,11 +209,11 @@ Future<List<String>?> scanQrCodeBatch(
     detectionTimeoutMs: detectionTimeoutMs,
     sameItemCooldownMs: sameItemCooldownMs,
     onScanRejected: onScanRejected,
+    toolBar: toolBar,
     scannerViewConfig: ScannerViewConfig.qrCode(
       overlayStyle: overlayStyle,
       offsetFromCenter: offsetFromCenter,
     ),
-    toolBarConfig: toolBarConfig,
     enableSoundAndVibration: enableSoundAndVibration,
   );
 }
@@ -227,7 +227,7 @@ Future<void> scanCustomStream(
   BuildContext context, {
   required void Function(String) onCameraScan,
   List<Widget>? stackChildren,
-  ToolBarConfig? toolBarConfig,
+  ScannerToolBar? toolBar,
   ScannerViewConfig? scannerViewConfig,
   bool allowDuplicates = true,
   int detectionTimeoutMs = 250,
@@ -239,7 +239,7 @@ Future<void> scanCustomStream(
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => ScannerScreen.multiscan(
-          toolBarConfig: toolBarConfig,
+          toolBar: toolBar,
           stackChildren: stackChildren,
           onScanRejected: onScanRejected,
           onCameraScan: onCameraScan,
@@ -265,7 +265,7 @@ Future<void> scanBarcodeStream(
   BuildContext context, {
   required void Function(String) onCameraScan,
   List<Widget>? stackChildren,
-  ToolBarConfig? toolBarConfig = const ToolBarConfig.multiscan(),
+  ScannerToolBar? toolBar = const BatchToolBar(),
   bool allowDuplicates = true,
   int detectionTimeoutMs = 250,
   int sameItemCooldownMs = 1500,
@@ -287,7 +287,7 @@ Future<void> scanBarcodeStream(
     offsetFromCenter: offsetFromCenter,
     allowedFormats: allowedFormats,
   ),
-  toolBarConfig: toolBarConfig,
+  toolBar: toolBar,
   enableSoundAndVibration: enableSoundAndVibration,
 );
 
@@ -300,7 +300,7 @@ Future<void> scanQrCodeStream(
   BuildContext context, {
   required void Function(String) onCameraScan,
   List<Widget>? stackChildren,
-  ToolBarConfig? toolBarConfig = const ToolBarConfig.multiscan(),
+  ScannerToolBar? toolBar = const BatchToolBar(),
   bool allowDuplicates = true,
   int detectionTimeoutMs = 250,
   int sameItemCooldownMs = 1500,
@@ -320,7 +320,7 @@ Future<void> scanQrCodeStream(
     overlayStyle: overlayStyle,
     offsetFromCenter: offsetFromCenter,
   ),
-  toolBarConfig: toolBarConfig,
+  toolBar: toolBar,
   enableSoundAndVibration: enableSoundAndVibration,
 );
 
