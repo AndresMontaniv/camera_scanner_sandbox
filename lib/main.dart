@@ -8,11 +8,10 @@ library;
 import 'package:flutter/material.dart';
 
 import 'functions.dart';
-import 'option2_screen.dart';
-import 'pos_barcode_scanner_screen.dart';
 import 'scanner_overlay.dart';
 import 'scanner_screen.dart';
 import 'testing_screen.dart';
+import 'pos_barcode_scanner_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -67,18 +66,6 @@ class TestMatrixScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const PosBarcodeScannerScreen(),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            title: const Text('Bottom Navigation Bar'),
-            trailing: const Icon(Icons.menu),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const Option2Screen(),
                 ),
               );
             },
