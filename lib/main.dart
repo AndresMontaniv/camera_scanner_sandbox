@@ -64,7 +64,7 @@ class TestMatrixScreen extends StatelessWidget {
           ),
           ListTile(
             title: const Text('POS with qty buttons'),
-            trailing: const Icon(Icons.add),
+            trailing: const Icon(Icons.shopping_bag_outlined),
             onTap: () {
               Navigator.push(
                 context,
