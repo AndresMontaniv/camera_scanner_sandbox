@@ -398,20 +398,19 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
     ]);
   }
 
-  // TODO: Gemini should doble check
   Widget? _buildToolBarUI() {
     final toolbar = widget.toolBar;
     if (toolbar == null || !toolbar.shouldBuild) return null;
     if (toolbar is BatchToolBar) {
       if (widget._mode == _ScanMode.single) {
         debugPrint('Switching ToolBar to `StandardToolBar` for Single Scan');
-        return ScannerTopBar(
+        return _ScannerTopBar(
           toolBar: toolbar.toStandard(),
           controller: controller,
           popBackWithListResult: _popBack,
         );
       } else {
-        return ScannerBatchTopBar(
+        return _ScannerBatchTopBar(
           toolBar: toolbar,
           controller: controller,
           popBackWithListResult: _popBack,
@@ -419,7 +418,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
         );
       }
     }
-    return ScannerTopBar(
+    return _ScannerTopBar(
       toolBar: toolbar,
       controller: controller,
       popBackWithListResult: _popBack,
