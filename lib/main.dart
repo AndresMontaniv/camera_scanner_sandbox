@@ -108,7 +108,6 @@ class TestMatrixScreen extends StatelessWidget {
               final result = await scanBarcode(
                 context,
                 overlayStyle: const ScannerOverlayStyle(borderColor: Colors.pink),
-                offsetFromCenter: const Offset(0, 100),
               );
               debugPrint('✅ Single Barcode Result: $result');
               if (!context.mounted) return;
