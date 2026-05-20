@@ -38,6 +38,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
   Timer? _idleTimer;
 
   bool _isCameraActive = false;
+  bool _isTransitioning = false;
   String? _lastScannedCode;
   DateTime? _lastScanTime;
 
@@ -80,11 +81,12 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
   void _resetIdleTimer() {
     _cancelIdleTimer();
     if (_isCameraActive) {
-      _idleTimer = Timer(widget.idleTimeout, _stopCamera);
+      _idleTimer = Timer(widget.idleTimeout, _toggleCamera);
     }
   }
 
   void _toggleCamera() {
+    if (_isTransitioning) return;
     if (_isCameraActive) {
       _stopCamera();
     } else {
@@ -93,19 +95,27 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
   }
 
   void _startCamera() async {
+    setState(() => _isTransitioning = true);
+    await _controller.start();
+    if (!mounted) return;
     setState(() {
       _isCameraActive = true;
+      _isTransitioning = false;
     });
-    await _controller.start();
     _resetIdleTimer();
   }
 
+  static const _animationDuration = Duration(milliseconds: 300);
+
   void _stopCamera() async {
-    setState(() {
-      _isCameraActive = false;
-    });
+    setState(() => _isTransitioning = true);
+    setState(() => _isCameraActive = false);
+    // Let the AnimatedSize collapse before killing the hardware.
+    await Future.delayed(_animationDuration);
     _cancelIdleTimer();
     await _controller.stop();
+    if (!mounted) return;
+    setState(() => _isTransitioning = false);
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
@@ -151,52 +161,51 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
     return Column(
       mainAxisSize: MainAxisSize.min, // Keep it tight
       children: [
-        // 1. The Camera Window (Unobstructed)
+        // 1. The Camera Window – expands from 0 → widget.height
         // MARK: - Camera Window
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            width: widget.width,
-            height: widget.height,
-            child: Container(
-              color: Colors.black, // Kills the white flash
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _isCameraActive
-                    ? MobileScanner(
-                        key: const ValueKey('scanner'),
-                        fit: BoxFit.cover,
-                        controller: _controller,
-                        useAppLifecycleState: false,
-                        scanWindow: Rect.fromLTWH(0, 0, widget.width, widget.height),
-                      )
-                    : Container(
-                        key: const ValueKey('placeholder'),
-                        color: Colors.black87,
-                        child: const Center(
-                          child: Icon(
-                            Icons.qr_code_scanner,
-                            color: Colors.white24,
-                            size: 48,
-                          ),
-                        ),
-                      ),
+          child: ClipRect(
+            child: AnimatedContainer(
+              duration: _animationDuration,
+              curve: Curves.easeInOut,
+              height: _isCameraActive ? widget.height : 0,
+              width: widget.width,
+              // OverflowBox prevents the camera feed from squishing during the animation.
+              // It acts like a window blind smoothly revealing the full-size feed.
+              child: OverflowBox(
+                minHeight: widget.height,
+                maxHeight: widget.height,
+                alignment: Alignment.topCenter,
+                child: MobileScanner(
+                  key: const ValueKey('scanner'),
+                  fit: BoxFit.cover,
+                  controller: _controller,
+                  useAppLifecycleState: false,
+                  scanWindow: Rect.fromLTWH(0, 0, widget.width, widget.height),
+                ),
               ),
             ),
           ),
         ),
 
-        const SizedBox(height: 12), // Beautiful spacing
+        const SizedBox(height: 12),
         // 2. The External Control Layer
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: _isCameraActive ? Colors.red.shade700 : Colors.blue.shade700,
             foregroundColor: Colors.white,
-            minimumSize: Size(widget.width, 48), // Match camera width for symmetry
+            minimumSize: Size(widget.width, 48),
           ),
-          icon: Icon(_isCameraActive ? Icons.stop : Icons.play_arrow),
-          label: Text(_isCameraActive ? 'Stop Camera' : 'Start Camera'),
-          onPressed: _toggleCamera,
+          icon: _isTransitioning
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : Icon(_isCameraActive ? Icons.stop : Icons.play_arrow),
+          label: _isTransitioning ? const SizedBox.shrink() : Text(_isCameraActive ? 'Stop Camera' : 'Start Camera'),
+          onPressed: _isTransitioning ? null : _toggleCamera,
         ),
       ],
     );

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'functions.dart';
 import 'live_barcode_scanner_widget.dart';
 
 class TestingScreen extends StatefulWidget {
@@ -35,35 +34,35 @@ class _TestingScreenState extends State<TestingScreen> {
               height: 100.0,
               onBarcodeScanned: _onScanned,
             ),
-            const SizedBox(height: 20.0),
-            ElevatedButton.icon(
-              onPressed: () {
-                showDraggableScannerSheet(context, onBarcodeScanned: _onScanned);
-              },
-              icon: const Icon(Icons.vertical_align_top),
-              label: const Text('Open Draggable Bottom Sheet'),
-            ),
-            const SizedBox(height: 20.0),
-            ElevatedButton.icon(
-              onPressed: () {
-                showFixedScannerSheet(context, onBarcodeScanned: _onScanned);
-              },
-              icon: const Icon(Icons.vertical_shades),
-              label: const Text('Open Fixed Width Bottom Sheet'),
-            ),
-            const SizedBox(height: 20.0),
-            ElevatedButton.icon(
-              onPressed: () async {
-                await scanBarcodeStream(
-                  context,
-                  allowDuplicates: true,
-                  onCameraScan: (barcode) => _onScanned(barcode),
-                );
-              },
-              icon: const Icon(Icons.open_in_full),
-              label: const Text('Open Full Screen 1D Scanner'),
-            ),
 
+            // const SizedBox(height: 20.0),
+            // ElevatedButton.icon(
+            //   onPressed: () {
+            //     showDraggableScannerSheet(context, onBarcodeScanned: _onScanned);
+            //   },
+            //   icon: const Icon(Icons.vertical_align_top),
+            //   label: const Text('Open Draggable Bottom Sheet'),
+            // ),
+            // const SizedBox(height: 20.0),
+            // ElevatedButton.icon(
+            //   onPressed: () {
+            //     showFixedScannerSheet(context, onBarcodeScanned: _onScanned);
+            //   },
+            //   icon: const Icon(Icons.vertical_shades),
+            //   label: const Text('Open Fixed Width Bottom Sheet'),
+            // ),
+            // const SizedBox(height: 20.0),
+            // ElevatedButton.icon(
+            //   onPressed: () async {
+            //     await scanBarcodeStream(
+            //       context,
+            //       allowDuplicates: true,
+            //       onCameraScan: (barcode) => _onScanned(barcode),
+            //     );
+            //   },
+            //   icon: const Icon(Icons.open_in_full),
+            //   label: const Text('Open Full Screen 1D Scanner'),
+            // ),
             const Divider(height: 30),
             Text('Scanned Codes: ${_scannedItems.length}', style: const TextStyle(fontSize: 25)),
             Expanded(
