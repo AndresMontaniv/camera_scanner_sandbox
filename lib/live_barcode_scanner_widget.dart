@@ -18,7 +18,7 @@ class LiveBarcodeScannerWidget extends StatefulWidget {
     this.maxWidth = 400.0,
     this.enableSoundAndVibration = true,
     this.sameItemCooldownMs = 1500,
-    this.idleTimeout = const Duration(seconds: 30),
+    this.idleTimeout = const Duration(seconds: 90),
   }) : assert(
          maxWidth >= 200.0 && maxWidth <= 600.0,
          'LiveBarcodeScannerWidget: maxWidth must be between 200.0 and 600.0 to ensure scanning performance.',
@@ -183,17 +183,59 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
                       width: currentWidth,
                       // OverflowBox prevents the camera feed from squishing during the animation.
                       // It acts like a window blind smoothly revealing the full-size feed.
-                      child: OverflowBox(
-                        minHeight: cameraHeight,
-                        maxHeight: cameraHeight,
-                        alignment: Alignment.topCenter,
-                        child: MobileScanner(
-                          key: const ValueKey('scanner'),
-                          fit: BoxFit.cover,
-                          controller: _controller,
-                          useAppLifecycleState: false,
-                          scanWindow: Rect.fromLTWH(0, 0, currentWidth, cameraHeight),
-                        ),
+                      child: Stack(
+                        children: [
+                          // 1. The Camera Hardware (Pushed to background)
+                          Positioned.fill(
+                            child: OverflowBox(
+                              minHeight: cameraHeight,
+                              maxHeight: cameraHeight,
+                              alignment: Alignment.topCenter,
+                              child: MobileScanner(
+                                key: const ValueKey('scanner'),
+                                fit: BoxFit.cover,
+                                controller: _controller,
+                                useAppLifecycleState: false,
+                                scanWindow: Rect.fromLTWH(0, 0, currentWidth, cameraHeight),
+                              ),
+                            ),
+                          ),
+
+                          // 2. The Minimalist Overlay (Top Right)
+                          // We only render the buttons when the camera is active and NOT transitioning
+                          if (_isCameraActive && !_isTransitioning)
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              right: 8,
+                              child: Row(
+                                mainAxisAlignment: .spaceBetween,
+                                children: [
+                                  // Close 'X' Button
+                                  IconButton(
+                                    icon: const Icon(Icons.close, color: Colors.white),
+                                    style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                    // Mirrors the bottom button perfectly, triggering the safe shutdown
+                                    onPressed: _toggleCamera,
+                                  ),
+                                  // Flashlight Toggle (Micro-rebuilds only when tapped)
+                                  ValueListenableBuilder<MobileScannerState>(
+                                    valueListenable: _controller,
+                                    builder: (context, state, child) {
+                                      return IconButton(
+                                        icon: Icon(
+                                          state.torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
+                                          color: Colors.white,
+                                        ),
+                                        style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                        onPressed: () => _controller.toggleTorch(),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
