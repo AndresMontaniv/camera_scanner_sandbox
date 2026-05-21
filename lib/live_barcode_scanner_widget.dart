@@ -6,8 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:native_haptics_and_audio/native_haptics_and_audio.dart';
 
 class LiveBarcodeScannerWidget extends StatefulWidget {
-  final double width;
-  final double height;
+  final double maxWidth;
   final void Function(String barcode) onBarcodeScanned;
   final bool enableSoundAndVibration;
   final int sameItemCooldownMs;
@@ -16,12 +15,14 @@ class LiveBarcodeScannerWidget extends StatefulWidget {
   const LiveBarcodeScannerWidget({
     super.key,
     required this.onBarcodeScanned,
-    this.width = 300,
-    this.height = 130,
+    this.maxWidth = 400.0,
     this.enableSoundAndVibration = true,
     this.sameItemCooldownMs = 1500,
     this.idleTimeout = const Duration(seconds: 30),
-  });
+  }) : assert(
+         maxWidth >= 200.0 && maxWidth <= 600.0,
+         'LiveBarcodeScannerWidget: maxWidth must be between 200.0 and 600.0 to ensure scanning performance.',
+       );
 
   @override
   State<LiveBarcodeScannerWidget> createState() => _LiveBarcodeScannerWidgetState();
@@ -158,56 +159,69 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min, // Keep it tight
-      children: [
-        // 1. The Camera Window – expands from 0 → widget.height
-        // MARK: - Camera Window
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: ClipRect(
-            child: AnimatedContainer(
-              duration: _animationDuration,
-              curve: Curves.easeInOut,
-              height: _isCameraActive ? widget.height : 0,
-              width: widget.width,
-              // OverflowBox prevents the camera feed from squishing during the animation.
-              // It acts like a window blind smoothly revealing the full-size feed.
-              child: OverflowBox(
-                minHeight: widget.height,
-                maxHeight: widget.height,
-                alignment: Alignment.topCenter,
-                child: MobileScanner(
-                  key: const ValueKey('scanner'),
-                  fit: BoxFit.cover,
-                  controller: _controller,
-                  useAppLifecycleState: false,
-                  scanWindow: Rect.fromLTWH(0, 0, widget.width, widget.height),
-                ),
-              ),
-            ),
-          ),
-        ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: widget.maxWidth),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Calculate the perfectly locked dimensions
+            final double currentWidth = constraints.maxWidth;
+            final double cameraHeight = currentWidth / 2.5;
 
-        const SizedBox(height: 12),
-        // 2. The External Control Layer
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _isCameraActive ? Colors.red.shade700 : Colors.blue.shade700,
-            foregroundColor: Colors.white,
-            minimumSize: Size(widget.width, 48),
-          ),
-          icon: _isTransitioning
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Icon(_isCameraActive ? Icons.stop : Icons.play_arrow),
-          label: _isTransitioning ? const SizedBox.shrink() : Text(_isCameraActive ? 'Stop Camera' : 'Start Camera'),
-          onPressed: _isTransitioning ? null : _toggleCamera,
+            return Column(
+              mainAxisSize: MainAxisSize.min, // Keep it tight
+              children: [
+                // 1. The Camera Window – expands from 0 → cameraHeight
+                // MARK: - Camera Window
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: ClipRect(
+                    child: AnimatedContainer(
+                      duration: _animationDuration,
+                      curve: Curves.easeInOut,
+                      height: _isCameraActive ? cameraHeight : 0,
+                      width: currentWidth,
+                      // OverflowBox prevents the camera feed from squishing during the animation.
+                      // It acts like a window blind smoothly revealing the full-size feed.
+                      child: OverflowBox(
+                        minHeight: cameraHeight,
+                        maxHeight: cameraHeight,
+                        alignment: Alignment.topCenter,
+                        child: MobileScanner(
+                          key: const ValueKey('scanner'),
+                          fit: BoxFit.cover,
+                          controller: _controller,
+                          useAppLifecycleState: false,
+                          scanWindow: Rect.fromLTWH(0, 0, currentWidth, cameraHeight),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+                // 2. The External Control Layer
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isCameraActive ? Colors.red.shade700 : Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    minimumSize: Size(currentWidth, 48),
+                  ),
+                  icon: _isTransitioning
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Icon(_isCameraActive ? Icons.stop : Icons.play_arrow),
+                  label: _isTransitioning ? const SizedBox.shrink() : Text(_isCameraActive ? 'Stop Camera' : 'Start Camera'),
+                  onPressed: _isTransitioning ? null : _toggleCamera,
+                ),
+              ],
+            );
+          },
         ),
-      ],
+      ),
     );
   }
 }

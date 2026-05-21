@@ -31,7 +31,6 @@ class _TestingScreenState extends State<TestingScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             LiveBarcodeScannerWidget(
-              height: 100.0,
               onBarcodeScanned: _onScanned,
             ),
 
