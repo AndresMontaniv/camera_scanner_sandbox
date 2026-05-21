@@ -86,37 +86,32 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
     }
   }
 
-  void _toggleCamera() {
-    if (_isTransitioning) return;
-    if (_isCameraActive) {
-      _stopCamera();
-    } else {
-      _startCamera();
-    }
-  }
-
-  void _startCamera() async {
-    setState(() => _isTransitioning = true);
-    await _controller.start();
-    if (!mounted) return;
-    setState(() {
-      _isCameraActive = true;
-      _isTransitioning = false;
-    });
-    _resetIdleTimer();
-  }
-
   static const _animationDuration = Duration(milliseconds: 300);
 
-  void _stopCamera() async {
+  Future<void> _toggleCamera() async {
+    if (_isTransitioning) return;
     setState(() => _isTransitioning = true);
-    setState(() => _isCameraActive = false);
-    // Let the AnimatedSize collapse before killing the hardware.
-    await Future.delayed(_animationDuration);
-    _cancelIdleTimer();
-    await _controller.stop();
-    if (!mounted) return;
-    setState(() => _isTransitioning = false);
+
+    if (_isCameraActive) {
+      // Shutting down
+      setState(() => _isCameraActive = false);
+      await Future.delayed(_animationDuration); // Wait for window blind to close
+
+      if (!mounted) return; // Guard: Did user leave screen during animation?
+      await _controller.stop();
+      _idleTimer?.cancel();
+    } else {
+      // Starting up
+      await _controller.start();
+
+      if (!mounted) return; // Guard: Did user leave screen while hardware booted?
+      setState(() => _isCameraActive = true);
+      _resetIdleTimer();
+    }
+
+    if (mounted) {
+      setState(() => _isTransitioning = false);
+    }
   }
 
   void _onBarcodeDetected(BarcodeCapture capture) {
