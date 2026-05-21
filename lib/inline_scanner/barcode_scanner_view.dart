@@ -5,30 +5,36 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:native_haptics_and_audio/native_haptics_and_audio.dart';
 
-class LiveBarcodeScannerWidget extends StatefulWidget {
+import 'barcode_scanner_controller.dart';
+
+class BarcodeScannerView extends StatefulWidget {
   final double maxWidth;
   final void Function(String barcode) onBarcodeScanned;
   final bool enableSoundAndVibration;
   final int sameItemCooldownMs;
   final Duration idleTimeout;
+  final BarcodeScannerController? controller;
+  final bool showToggleButton;
 
-  const LiveBarcodeScannerWidget({
+  const BarcodeScannerView({
     super.key,
     required this.onBarcodeScanned,
     this.maxWidth = 400.0,
     this.enableSoundAndVibration = true,
     this.sameItemCooldownMs = 1500,
     this.idleTimeout = const Duration(seconds: 90),
+    this.controller,
+    this.showToggleButton = true,
   }) : assert(
          maxWidth >= 200.0 && maxWidth <= 600.0,
-         'LiveBarcodeScannerWidget: maxWidth must be between 200.0 and 600.0 to ensure scanning performance.',
+         'BarcodeScannerView: maxWidth must be between 200.0 and 600.0 to ensure scanning performance.',
        );
 
   @override
-  State<LiveBarcodeScannerWidget> createState() => _LiveBarcodeScannerWidgetState();
+  State<BarcodeScannerView> createState() => _BarcodeScannerViewState();
 }
 
-class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> with WidgetsBindingObserver {
+class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBindingObserver {
   final MobileScannerController _controller = MobileScannerController(
     facing: CameraFacing.back,
     autoStart: false,
@@ -51,6 +57,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
     WidgetsBinding.instance.addObserver(this);
     _effects.initialize();
     _subscription = _controller.barcodes.listen(_onBarcodeDetected);
+    widget.controller?.attach(_toggleCamera);
   }
 
   @override
@@ -91,10 +98,12 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
   Future<void> _toggleCamera() async {
     if (_isTransitioning) return;
     setState(() => _isTransitioning = true);
+    widget.controller?.updateState(active: _isCameraActive, transitioning: true);
 
     if (_isCameraActive) {
       // Shutting down
       setState(() => _isCameraActive = false);
+      widget.controller?.updateState(active: false, transitioning: true);
       await Future.delayed(_animationDuration); // Wait for window blind to close
 
       if (!mounted) return; // Guard: Did user leave screen during animation?
@@ -106,11 +115,13 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
 
       if (!mounted) return; // Guard: Did user leave screen while hardware booted?
       setState(() => _isCameraActive = true);
+      widget.controller?.updateState(active: true, transitioning: true);
       _resetIdleTimer();
     }
 
     if (mounted) {
       setState(() => _isTransitioning = false);
+      widget.controller?.updateState(active: _isCameraActive, transitioning: false);
     }
   }
 
@@ -204,7 +215,7 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
                               left: 8,
                               right: 8,
                               child: Row(
-                                mainAxisAlignment: .spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   // Close 'X' Button
                                   IconButton(
@@ -236,24 +247,26 @@ class _LiveBarcodeScannerWidgetState extends State<LiveBarcodeScannerWidget> wit
                   ),
                 ),
 
-                const SizedBox(height: 12),
-                // 2. The External Control Layer
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _isCameraActive ? Colors.red.shade700 : Colors.blue.shade700,
-                    foregroundColor: Colors.white,
-                    minimumSize: Size(currentWidth, 48),
+                if (widget.showToggleButton) ...[
+                  const SizedBox(height: 12),
+                  // 2. The External Control Layer
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isCameraActive ? Colors.red.shade700 : Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      minimumSize: Size(currentWidth, 48),
+                    ),
+                    icon: _isTransitioning
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Icon(_isCameraActive ? Icons.stop : Icons.play_arrow),
+                    label: _isTransitioning ? const SizedBox.shrink() : Text(_isCameraActive ? 'Stop Camera' : 'Start Camera'),
+                    onPressed: _isTransitioning ? null : _toggleCamera,
                   ),
-                  icon: _isTransitioning
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : Icon(_isCameraActive ? Icons.stop : Icons.play_arrow),
-                  label: _isTransitioning ? const SizedBox.shrink() : Text(_isCameraActive ? 'Stop Camera' : 'Start Camera'),
-                  onPressed: _isTransitioning ? null : _toggleCamera,
-                ),
+                ],
               ],
             );
           },

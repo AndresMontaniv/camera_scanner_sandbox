@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoTextField, OverlayVisibilityMode;
 
-import 'live_barcode_scanner_widget.dart';
+import 'inline_scanner/barcode_scanner_controller.dart';
+import 'inline_scanner/barcode_scanner_view.dart';
 
 class TestingScreen extends StatefulWidget {
   const TestingScreen({super.key});
@@ -12,12 +13,19 @@ class TestingScreen extends StatefulWidget {
 
 class _TestingScreenState extends State<TestingScreen> {
   final List<String> _scannedItems = [];
+  final BarcodeScannerController _scannerController = BarcodeScannerController();
 
   void _onScanned(String barcode) {
     _scannedItems.add(barcode);
     if (mounted) {
       setState(() {});
     }
+  }
+
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
   }
 
   @override
@@ -31,7 +39,9 @@ class _TestingScreenState extends State<TestingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            LiveBarcodeScannerWidget(
+            BarcodeScannerView(
+              controller: _scannerController,
+              showToggleButton: false,
               onBarcodeScanned: _onScanned,
             ),
             const Divider(height: 50),
@@ -55,21 +65,29 @@ class _TestingScreenState extends State<TestingScreen> {
                 //
                 Padding(
                   padding: const EdgeInsets.only(left: 8.0),
-                  child: IconButton(
-                    onPressed: () {
-                      // Here is where we will toggle the LiveBarcodeScanner widget from ON or OFF
-                    },
-                    icon: const Icon(Icons.barcode_reader),
-                    style: ButtonStyle(
-                      shape: WidgetStateProperty.all(
-                        RoundedRectangleBorder(
-                          side: const BorderSide(color: Colors.black45),
-                          borderRadius: BorderRadius.circular(10.0),
+                  child: ListenableBuilder(
+                    listenable: _scannerController,
+                    builder: (context, _) {
+                      final isActive = _scannerController.isCameraActive;
+                      final isTransitioning = _scannerController.isTransitioning;
+
+                      return IconButton(
+                        onPressed: isTransitioning ? null : _scannerController.toggle,
+                        icon: isTransitioning
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Icon(isActive ? Icons.close : Icons.barcode_reader),
+                        style: ButtonStyle(
+                          shape: WidgetStateProperty.all(
+                            RoundedRectangleBorder(
+                              side: const BorderSide(color: Colors.black45),
+                              borderRadius: BorderRadius.circular(10.0),
+                            ),
+                          ),
+                          visualDensity: VisualDensity.comfortable,
+                          backgroundColor: WidgetStatePropertyAll(isActive ? Colors.red.shade100 : Colors.white),
                         ),
-                      ),
-                      visualDensity: VisualDensity.comfortable,
-                      backgroundColor: const WidgetStatePropertyAll(Colors.white),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ],
