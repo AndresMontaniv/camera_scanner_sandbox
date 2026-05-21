@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Scanner Matrix Test',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const TestMatrixScreen(),
+      home: const TestingScreen(),
     );
   }
 }
