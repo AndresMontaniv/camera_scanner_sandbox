@@ -7,6 +7,29 @@ import 'package:native_haptics_and_audio/native_haptics_and_audio.dart';
 
 import 'barcode_scanner_controller.dart';
 
+// The Enhanced Theme Enum
+enum ActionButtonTheme {
+  light,
+  dark
+  ; // <-- Semicolon is required here before declaring methods
+
+  // Encapsulated const styling
+  ButtonStyle get buttonStyle {
+    switch (this) {
+      case ActionButtonTheme.light:
+        return const ButtonStyle(
+          backgroundColor: WidgetStatePropertyAll(Color(0xD9FFFFFF)), // 85% White
+          iconColor: WidgetStatePropertyAll(Colors.black54),
+        );
+      case ActionButtonTheme.dark:
+        return const ButtonStyle(
+          backgroundColor: WidgetStatePropertyAll(Colors.black54),
+          iconColor: WidgetStatePropertyAll(Color(0xD9FFFFFF)),
+        );
+    }
+  }
+}
+
 class BarcodeScannerView extends StatefulWidget {
   final double maxWidth;
   final void Function(String barcode) onBarcodeScanned;
@@ -15,6 +38,7 @@ class BarcodeScannerView extends StatefulWidget {
   final Duration idleTimeout;
   final BarcodeScannerController? controller;
   final bool showToggleButton;
+  final ActionButtonTheme actionButtonTheme;
 
   const BarcodeScannerView({
     super.key,
@@ -25,6 +49,7 @@ class BarcodeScannerView extends StatefulWidget {
     this.idleTimeout = const Duration(seconds: 90),
     this.controller,
     this.showToggleButton = true,
+    this.actionButtonTheme = ActionButtonTheme.light,
   }) : assert(
          maxWidth >= 200.0 && maxWidth <= 600.0,
          'BarcodeScannerView: maxWidth must be between 200.0 and 600.0 to ensure scanning performance.',
@@ -219,9 +244,8 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
                                 children: [
                                   // Close 'X' Button
                                   IconButton(
-                                    icon: const Icon(Icons.close, color: Colors.white),
-                                    style: IconButton.styleFrom(backgroundColor: Colors.black54),
-                                    // Mirrors the bottom button perfectly, triggering the safe shutdown
+                                    icon: const Icon(Icons.close),
+                                    style: widget.actionButtonTheme.buttonStyle,
                                     onPressed: _toggleCamera,
                                   ),
                                   // Flashlight Toggle (Micro-rebuilds only when tapped)
@@ -231,9 +255,8 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
                                       return IconButton(
                                         icon: Icon(
                                           state.torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
-                                          color: Colors.white,
                                         ),
-                                        style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                        style: widget.actionButtonTheme.buttonStyle,
                                         onPressed: () => _controller.toggleTorch(),
                                       );
                                     },
