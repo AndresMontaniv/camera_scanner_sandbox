@@ -19,7 +19,7 @@ class BarcodeScannerController extends ChangeNotifier {
   }
 
   // Used by the View to sync its hardware state to the outside world
-  void updateState({required bool active, required bool transitioning}) async {
+  Future<void> updateState({required bool active, required bool transitioning}) async {
     _isCameraActive = active;
 
     if (transitioning) {

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoTextField, OverlayVisibilityMode;
 
-import 'inline_scanner/barcode_scanner_controller.dart';
-import 'inline_scanner/barcode_scanner_view.dart';
+import 'inline_scanner/inline_scanner.dart';
 
 class TestingScreen extends StatefulWidget {
   const TestingScreen({super.key});
@@ -14,6 +13,14 @@ class TestingScreen extends StatefulWidget {
 class _TestingScreenState extends State<TestingScreen> {
   final List<String> _scannedItems = [];
   final BarcodeScannerController _scannerController = BarcodeScannerController();
+
+  // Pre-compiled shape (Finding #2 — avoid allocation on every ListenableBuilder rebuild)
+  static final _scannerButtonShape = WidgetStateProperty.all(
+    RoundedRectangleBorder(
+      side: const BorderSide(color: Colors.black45),
+      borderRadius: BorderRadius.circular(10.0),
+    ),
+  );
 
   void _onScanned(String barcode) {
     _scannedItems.add(barcode);
@@ -77,12 +84,7 @@ class _TestingScreenState extends State<TestingScreen> {
                             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                             : Icon(isActive ? Icons.close : Icons.barcode_reader),
                         style: ButtonStyle(
-                          shape: WidgetStateProperty.all(
-                            RoundedRectangleBorder(
-                              side: const BorderSide(color: Colors.black45),
-                              borderRadius: BorderRadius.circular(10.0),
-                            ),
-                          ),
+                          shape: _scannerButtonShape,
                           visualDensity: VisualDensity.comfortable,
                           backgroundColor: WidgetStatePropertyAll(isActive ? Colors.red.shade100 : Colors.white),
                         ),

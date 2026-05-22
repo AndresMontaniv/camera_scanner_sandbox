@@ -72,7 +72,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
   bool _isCameraActive = false;
   bool _isTransitioning = false;
   String? _lastScannedCode;
-  DateTime? _lastScanTime;
+  final Stopwatch _cooldownWatch = Stopwatch();
 
   final _effects = NativeHapticsAndAudioRepository.instance;
 
@@ -97,7 +97,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
       case AppLifecycleState.inactive:
         _cancelIdleTimer();
         _subscription?.pause();
-        _controller.stop();
+        unawaited(_controller.stop());
         break;
       case AppLifecycleState.resumed:
         _controller.start();
@@ -119,6 +119,16 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
   }
 
   static const _animationDuration = Duration(milliseconds: 300);
+
+  // Pre-compiled button styles (Finding #7 — avoid allocation on every rebuild)
+  static final _activeToggleStyle = ElevatedButton.styleFrom(
+    backgroundColor: Colors.red.shade700,
+    foregroundColor: Colors.white,
+  );
+  static final _inactiveToggleStyle = ElevatedButton.styleFrom(
+    backgroundColor: Colors.blue.shade700,
+    foregroundColor: Colors.white,
+  );
 
   Future<void> _toggleCamera() async {
     if (_isTransitioning) return;
@@ -146,7 +156,7 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
 
     if (mounted) {
       setState(() => _isTransitioning = false);
-      widget.controller?.updateState(active: _isCameraActive, transitioning: false);
+      await widget.controller?.updateState(active: _isCameraActive, transitioning: false);
     }
   }
 
@@ -157,13 +167,14 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
     if (rawValue == null) return;
 
     // Stream Cooldown Logic (prevents rapid-fire duplicate scans of the same item)
-    if (rawValue == _lastScannedCode && _lastScanTime != null) {
-      final elapsed = DateTime.now().difference(_lastScanTime!).inMilliseconds;
-      if (elapsed < widget.sameItemCooldownMs) return;
+    if (rawValue == _lastScannedCode && _cooldownWatch.isRunning) {
+      if (_cooldownWatch.elapsedMilliseconds < widget.sameItemCooldownMs) return;
     }
 
     _lastScannedCode = rawValue;
-    _lastScanTime = DateTime.now();
+    _cooldownWatch
+      ..reset()
+      ..start();
 
     // Trigger Native Hardware Feedback
     if (widget.enableSoundAndVibration) {
@@ -232,38 +243,43 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
                             ),
                           ),
 
-                          // 2. The Minimalist Overlay (Top Right)
-                          // We only render the buttons when the camera is active and NOT transitioning
-                          if (_isCameraActive && !_isTransitioning)
-                            Positioned(
-                              top: 8,
-                              left: 8,
-                              right: 8,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // Close 'X' Button
-                                  IconButton(
-                                    icon: const Icon(Icons.close),
-                                    style: widget.actionButtonTheme.buttonStyle,
-                                    onPressed: _toggleCamera,
-                                  ),
-                                  // Flashlight Toggle (Micro-rebuilds only when tapped)
-                                  ValueListenableBuilder<MobileScannerState>(
-                                    valueListenable: _controller,
-                                    builder: (context, state, child) {
-                                      return IconButton(
-                                        icon: Icon(
-                                          state.torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
-                                        ),
-                                        style: widget.actionButtonTheme.buttonStyle,
-                                        onPressed: () => _controller.toggleTorch(),
-                                      );
-                                    },
-                                  ),
-                                ],
+                          // 2. The Minimalist Overlay
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            right: 8,
+                            child: AnimatedOpacity(
+                              opacity: (_isCameraActive && !_isTransitioning) ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 150),
+                              child: IgnorePointer(
+                                ignoring: !_isCameraActive || _isTransitioning,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    // Close 'X' Button
+                                    IconButton(
+                                      icon: const Icon(Icons.close),
+                                      style: widget.actionButtonTheme.buttonStyle,
+                                      onPressed: _toggleCamera,
+                                    ),
+                                    // Flashlight Toggle (Micro-rebuilds only when tapped)
+                                    ValueListenableBuilder<MobileScannerState>(
+                                      valueListenable: _controller,
+                                      builder: (context, state, child) {
+                                        return IconButton(
+                                          icon: Icon(
+                                            state.torchState == TorchState.on ? Icons.flash_on : Icons.flash_off,
+                                          ),
+                                          style: widget.actionButtonTheme.buttonStyle,
+                                          onPressed: () => _controller.toggleTorch(),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -274,10 +290,8 @@ class _BarcodeScannerViewState extends State<BarcodeScannerView> with WidgetsBin
                   const SizedBox(height: 12),
                   // 2. The External Control Layer
                   ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isCameraActive ? Colors.red.shade700 : Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      minimumSize: Size(currentWidth, 48),
+                    style: (_isCameraActive ? _activeToggleStyle : _inactiveToggleStyle).copyWith(
+                      minimumSize: WidgetStatePropertyAll(Size(currentWidth, 48)),
                     ),
                     icon: _isTransitioning
                         ? const SizedBox(
